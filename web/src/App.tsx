@@ -126,7 +126,7 @@ export default function App() {
           <DuelsView coins={me.user.coins} selfId={me.user.id} refresh={refresh} notify={notify} />
         )}
         {tab === "shop" && <ShopView refresh={refresh} notify={notify} />}
-        {tab === "tasks" && <TasksView refresh={refresh} notify={notify} />}
+        {tab === "tasks" && <TasksView user={me.user} refresh={refresh} notify={notify} />}
         {tab === "rating" && <RatingView selfId={me.user.id} notify={notify} />}
         {tab === "profile" && (
           <ProfileView
