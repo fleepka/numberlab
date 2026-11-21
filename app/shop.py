@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import random
+import secrets
+from datetime import date
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.economy import now
+from app.models import Plate, Purchase, User
+from app.plates import PlateValue, parse_code, pretty_plate
+
+
+class ShopError(Exception):
+    pass
+
+
+SHOP_SIZE = 9
+
+
+def offers_for(user_id: int, day: date) -> list[PlateValue]:
+    """Витрина на день: одинаковая для пользователя в течение суток, но разная у всех."""
+    rng = random.Random(f"{user_id}:{day.isoformat()}")
+    seen: dict[str, PlateValue] = {}
+    for _ in range(400):
+        if len(seen) >= SHOP_SIZE:
+            break
+        value = pretty_plate(rng)
+        seen.setdefault(value.code, value)
+    return sorted(seen.values(), key=lambda v: v.stars, reverse=True)
+
+
+async def prepare_purchase(session: AsyncSession, user: User, code: str) -> Purchase:
+    offer = next((o for o in offers_for(user.id, date.today()) if o.code == code), None)
+    if offer is None:
+        raise ShopError("этого номера нет в витрине")
+
+    if await session.scalar(select(Plate.id).where(Plate.code == code)):
+        raise ShopError("номер уже занят другим игроком")
+
+    purchase = Purchase(
+        user_id=user.id,
+        code=offer.code,
+        stars=offer.stars,
+        payload=f"buy:{secrets.token_hex(12)}",
+    )
+    session.add(purchase)
+    await session.flush()
+    return purchase
+
+
+async def fulfil_purchase(session: AsyncSession, payload: str) -> Plate | None:
+    """Выдаёт номер по оплаченному счёту. Повторный вызов ничего не дублирует."""
+    purchase = await session.scalar(
+        select(Purchase).where(Purchase.payload == payload).with_for_update()
+    )
+    if purchase is None or purchase.status == "paid":
+        return None
+
+    if await session.scalar(select(Plate.id).where(Plate.code == purchase.code)):
+        purchase.status = "failed"
+        return None
+
+    value = parse_code(purchase.code)
+    plate = Plate(
+        code=value.code,
+        digits=value.digits,
+        letters=value.letters,
+        region=value.region,
+        score=value.score,
+        price=value.price,
+        rarity=value.rarity,
+        stars=value.stars,
+        owner_id=purchase.user_id,
+        is_paid=True,
+        source="shop",
+    )
+    session.add(plate)
+    await session.flush()
+
+    purchase.status = "paid"
+    purchase.paid_at = now()
+    return plate
