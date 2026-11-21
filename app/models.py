@@ -35,6 +35,10 @@ class User(Base):
     xp: Mapped[int] = mapped_column(Integer, default=0)
     level: Mapped[int] = mapped_column(Integer, default=1)
     season_points: Mapped[int] = mapped_column(Integer, default=0)
+    invites: Mapped[int] = mapped_column(Integer, default=0)
+    invited_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     spins: Mapped[int] = mapped_column(Integer, default=0)

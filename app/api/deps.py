@@ -15,6 +15,7 @@ async def current_user(
 ) -> User:
     init_data = request.headers.get("x-init-data", "")
     dev_id = request.headers.get("x-dev-user", "")
+    start_param = request.headers.get("x-start-param", "") or None
 
     try:
         if settings.dev_mode and dev_id and not init_data:
@@ -28,7 +29,7 @@ async def current_user(
     except (AuthError, ValueError):
         raise HTTPException(status_code=401, detail="unauthorized") from None
 
-    user = await get_or_create_user(session, payload)
+    user = await get_or_create_user(session, payload, start_param)
     await session.commit()
 
     if user.is_banned:

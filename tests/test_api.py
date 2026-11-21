@@ -99,6 +99,33 @@ async def test_rating_shows_garage_value(client):
     assert data["items"][0]["total"] == plate["price"]
 
 
+async def test_referral_credits_inviter(client):
+    await get_me(client, "1500")
+
+    joined = await client.get(
+        "/api/me", headers={**headers("1501"), "X-Start-Param": "1500"}
+    )
+    assert joined.status_code == 200
+
+    friends = (await client.get("/api/friends", headers=headers("1500"))).json()
+    assert friends["invites"] == 1
+    assert friends["ladder"][0]["done"] is True
+
+    inviter = await get_me(client, "1500")
+    assert inviter["user"]["coins"] == 1800
+
+
+async def test_referral_ignored_for_existing_user(client):
+    await get_me(client, "1510")
+    await get_me(client, "1511")
+
+    again = await client.get("/api/me", headers={**headers("1511"), "X-Start-Param": "1510"})
+    assert again.status_code == 200
+
+    friends = (await client.get("/api/friends", headers=headers("1510"))).json()
+    assert friends["invites"] == 0
+
+
 async def test_daily_once_per_day(client):
     first = await client.post("/api/daily", headers=headers("1300"))
     assert first.status_code == 200

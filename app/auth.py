@@ -58,9 +58,12 @@ def verify_init_data(init_data: str, bot_token: str, max_age: int = 86400) -> di
     return user
 
 
-async def get_or_create_user(session: AsyncSession, data: dict) -> User:
+async def get_or_create_user(
+    session: AsyncSession, data: dict, start_param: str | None = None
+) -> User:
     tg_id = int(data["id"])
     user = await session.scalar(select(User).where(User.tg_id == tg_id))
+    created = False
 
     if user is None:
         user = User(
@@ -72,6 +75,7 @@ async def get_or_create_user(session: AsyncSession, data: dict) -> User:
         session.add(user)
         try:
             await session.flush()
+            created = True
         except IntegrityError:
             # Параллельный первый вход того же пользователя — забираем существующую запись.
             await session.rollback()
@@ -83,4 +87,9 @@ async def get_or_create_user(session: AsyncSession, data: dict) -> User:
     user.first_name = data.get("first_name") or user.first_name or ""
     if data.get("photo_url"):
         user.photo_url = data["photo_url"]
+
+    if created and start_param and start_param.isdigit():
+        from app.friends import register_invite
+
+        await register_invite(session, int(start_param), user)
     return user

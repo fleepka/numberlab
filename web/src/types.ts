@@ -112,6 +112,21 @@ export type RatingData = {
   me: { rank: number; total: number; plates: number };
 };
 
+export type LadderStep = {
+  need: number;
+  title: string;
+  coins: number;
+  gems: number;
+  energy: number;
+  done: boolean;
+};
+
+export type FriendsData = {
+  invites: number;
+  link: string;
+  ladder: LadderStep[];
+};
+
 export type Tx = {
   id: number;
   currency: string;

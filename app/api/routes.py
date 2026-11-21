@@ -11,6 +11,7 @@ from app.collections import catalog as collections_catalog
 from app.collections import claim as claim_collection
 from app.economy import history
 from app.energy import next_in, regenerate
+from app.friends import invite_link, ladder_view
 from app.rating import leaderboard, position
 from app.tasks import catalog as tasks_catalog
 from app.tasks import claim as claim_task
@@ -161,6 +162,15 @@ async def claim_task_view(
         raise HTTPException(status_code=400, detail=str(error)) from None
 
     return result
+
+
+@router.get("/friends")
+async def friends_view(user: User = Depends(current_user)) -> dict:
+    return {
+        "invites": user.invites,
+        "link": invite_link(user.tg_id),
+        "ladder": ladder_view(user.invites),
+    }
 
 
 @router.get("/rating")

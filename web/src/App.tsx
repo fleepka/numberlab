@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, tg } from "./api";
 import { CollectionsView } from "./components/Collections";
 import { DuelsView } from "./components/Duels";
+import { FriendsView } from "./components/Friends";
 import { GarageView } from "./components/Garage";
 import { ProfileView } from "./components/Profile";
 import { RatingView } from "./components/Rating";
@@ -10,14 +11,23 @@ import { SpinView } from "./components/Spin";
 import { TasksView } from "./components/Tasks";
 import type { MeResponse } from "./types";
 
-type Tab = "spin" | "garage" | "collections" | "duels" | "shop" | "tasks" | "rating" | "profile";
+type Tab =
+  | "spin"
+  | "garage"
+  | "collections"
+  | "duels"
+  | "shop"
+  | "tasks"
+  | "rating"
+  | "friends"
+  | "profile";
 
 const NAV: { id: Tab; label: string }[] = [
   { id: "spin", label: "Главная" },
   { id: "garage", label: "Гараж" },
-  { id: "tasks", label: "Задания" },
   { id: "rating", label: "Рейтинг" },
-  { id: "profile", label: "Профиль" },
+  { id: "tasks", label: "Задания" },
+  { id: "friends", label: "Друзья" },
 ];
 
 export type TabId = Tab;
@@ -30,6 +40,7 @@ const ICONS: Record<Tab, string> = {
   shop: "M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 0 1 6 0v2",
   tasks: "M8 6h11M8 12h11M8 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
   rating: "M8 21V10M12 21V4M16 21v-7M4 21h16",
+  friends: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20a7 7 0 0 1 14 0M17 12a3 3 0 1 0 0-6M18 20a6 6 0 0 0-2-4.5",
   profile: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
 };
 
@@ -96,17 +107,31 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
-          NUMBER<span className="brand-accent">LAB</span>
-        </div>
-        <div className="wallet">
-          <div className="coins">
-            <span className="coin-icon">М</span>
-            {me.user.coins.toLocaleString("ru-RU")}
+        <button className="avatar" onClick={() => setTab("profile")}>
+          {me.user.photo_url ? (
+            <img src={me.user.photo_url} alt="" />
+          ) : (
+            <span>{(me.user.first_name || "И").slice(0, 1).toUpperCase()}</span>
+          )}
+          <span className="avatar-level">{me.user.level}</span>
+        </button>
+
+        <div className="profile-meta">
+          <div className="profile-name">{me.user.first_name || "Игрок"}</div>
+          <div className="xp-line">
+            <div
+              className="xp-fill"
+              style={{ width: `${Math.min(100, Math.round(((400 - me.user.xp_to_next) / 400) * 100))}%` }}
+            />
           </div>
-          <div className="gems" title="GEMS">
-            <span className="gem-icon">◆</span>
-            {me.user.gems}
+        </div>
+
+        <div className="pills">
+          <div className="pill" title="Энергия">
+            ⚡ {me.user.energy}
+          </div>
+          <div className="pill pill-coins" title="Монеты">
+            М {me.user.coins.toLocaleString("ru-RU")}
           </div>
         </div>
       </header>
@@ -128,6 +153,7 @@ export default function App() {
         {tab === "shop" && <ShopView refresh={refresh} notify={notify} />}
         {tab === "tasks" && <TasksView user={me.user} refresh={refresh} notify={notify} />}
         {tab === "rating" && <RatingView selfId={me.user.id} notify={notify} />}
+        {tab === "friends" && <FriendsView selfId={me.user.id} notify={notify} />}
         {tab === "profile" && (
           <ProfileView
             user={me.user}

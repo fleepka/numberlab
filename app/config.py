@@ -21,6 +21,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("WEBHOOK_SECRET", "TELEGRAM_WEBHOOK_SECRET"),
     )
     public_url: str = Field(default="http://localhost:8000", validation_alias="PUBLIC_URL")
+    bot_username: str = Field(default="NumbersLab_bot", validation_alias="BOT_USERNAME")
     dev_mode: bool = Field(default=True, validation_alias="DEV_MODE")
 
     free_spin_hours: int = 3

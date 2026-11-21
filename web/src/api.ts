@@ -1,6 +1,7 @@
 import type {
   CollectionT,
   DuelT,
+  FriendsData,
   JoinResult,
   MeResponse,
   Offer,
@@ -14,9 +15,11 @@ type TelegramWindow = Window & {
   Telegram?: {
     WebApp?: {
       initData: string;
+      initDataUnsafe?: { start_param?: string };
       ready: () => void;
       expand: () => void;
       openInvoice: (url: string, callback?: (status: string) => void) => void;
+      openTelegramLink?: (url: string) => void;
       HapticFeedback?: { impactOccurred: (style: string) => void };
     };
   };
@@ -39,6 +42,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...((init?.headers as Record<string, string>) ?? {}),
   };
   if (tg?.initData) headers["X-Init-Data"] = tg.initData;
+  const startParam = tg?.initDataUnsafe?.start_param;
+  if (startParam) headers["X-Start-Param"] = startParam;
   const dev = devUser();
   if (dev) headers["X-Dev-User"] = dev;
 
@@ -85,6 +90,7 @@ export const api = {
       rewards: { coins: number; energy: number; gems: number };
     }>(`/api/tasks/${code}/claim`, { method: "POST" }),
   rating: () => request<RatingData>("/api/rating"),
+  friends: () => request<FriendsData>("/api/friends"),
   duels: () => request<{ open: DuelT[]; mine: DuelT[] }>("/api/duels"),
   createDuel: (bet: number) =>
     request<{ duel: DuelT; coins: number }>("/api/duels", {
