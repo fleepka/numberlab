@@ -18,6 +18,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 from app.collections import seed as seed_collections  # noqa: E402
 from app.db import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
+from app.tasks import seed as seed_tasks  # noqa: E402
 
 
 @pytest_asyncio.fixture
@@ -28,6 +29,7 @@ async def client():
 
     async with SessionLocal() as session:
         await seed_collections(session)
+        await seed_tasks(session)
         await session.commit()
 
     transport = ASGITransport(app=app)

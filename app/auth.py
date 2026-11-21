@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.energy import ENERGY_MAX
 from app.models import User
 
 
@@ -65,6 +66,7 @@ async def get_or_create_user(session: AsyncSession, data: dict) -> User:
         user = User(
             tg_id=tg_id,
             coins=settings.start_balance,
+            energy=ENERGY_MAX,
             is_admin=bool(settings.admin_id) and tg_id == settings.admin_id,
         )
         session.add(user)

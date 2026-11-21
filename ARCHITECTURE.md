@@ -124,6 +124,17 @@ scripts/smoke.py
 Правила: `triple`, `pair`, `palindrome`, `sequence`, `digits_exact`, `contains`, `prefix`, `region`, `rarity_min`.
 Прогресс считается по текущему инвентарю, награда выдаётся один раз и фиксируется в `user_collections`.
 
+## Энергия, задания и рейтинг
+
+Спин сначала тратит энергию (`users.energy`, максимум 30, +1 каждые 10 минут), и только когда она кончилась — COINS.
+Энергия начисляется лениво в `app/energy.py` (`regenerate` вызывается на `/api/me` и `/api/spin`), отдельного планировщика нет.
+
+Задания живут в таблицах `tasks` и `task_progress`. Период — ключ: дата для `daily`, ISO-неделя для `weekly`, `once` для разовых.
+События (`spin`, `sell`, `duel`, `daily`, `rare`, `collection`) вызывают `bump()` из `app/tasks.py`, прогресс обрезается на `target`.
+Награда выдаётся один раз на период: `claimed_at` в `task_progress`, повторная выдача — ошибка.
+
+Рейтинг (`app/rating.py`) считается на лету: сумма `price` номеров в гараже, порядок по сумме, затем по количеству. Хранимых снапшотов нет.
+
 ## API
 
 | метод | путь | смысл |
@@ -134,6 +145,9 @@ scripts/smoke.py
 | POST | `/api/garage/{id}/sell` | продать номер |
 | GET | `/api/collections` | коллекции и прогресс |
 | POST | `/api/collections/{id}/claim` | забрать награду |
+| GET | `/api/tasks` | задания и прогресс за период |
+| POST | `/api/tasks/{code}/claim` | забрать награду задания |
+| GET | `/api/rating` | топ по гаражам и личное место |
 | GET | `/api/history` | журнал операций |
 | GET | `/api/feed` | лента редких номеров |
 | GET/POST | `/api/duels` | список и создание |

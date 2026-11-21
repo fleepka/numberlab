@@ -1,25 +1,21 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.economy import GameError, apply_delta, lock_user, lock_users, now
+from app.energy import regenerate
 from app.models import DailyClaim, Duel, Plate, Spin, User
-from app.plates import PlateValue, random_plate
+from app.plates import PlateValue, random_plate, tier_index
 from app.progress import award_xp
+from app.tasks import bump
 
 
 MIN_BET = 100
 MAX_BET = 100_000
-
-
-def _aware(value: datetime | None) -> datetime | None:
-    if value is not None and value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value
 
 
 def _plate_from(value: PlateValue, owner_id: int, source: str) -> Plate:
@@ -55,35 +51,30 @@ async def create_unique_plate(
     raise GameError("не удалось подобрать свободный номер")
 
 
-def next_spin_at(user: User) -> datetime | None:
-    last = _aware(user.last_spin_at)
-    if last is None:
-        return None
-    return last + timedelta(hours=settings.free_spin_hours)
-
-
-def spin_is_free(user: User) -> bool:
-    ready = next_spin_at(user)
-    return ready is None or now() >= ready
-
-
 async def spin(session: AsyncSession, user_id: int) -> tuple[Plate, int]:
     user = await lock_user(session, user_id)
     if user.is_banned:
         raise GameError("аккаунт заблокирован")
 
-    free = spin_is_free(user)
-    cost = 0 if free else settings.spin_cost
-    if cost:
-        await apply_delta(session, user, -cost, "spin")
+    regenerate(user)
+    if user.energy > 0:
+        user.energy -= 1
+        cost = 0
+    elif user.coins >= settings.spin_cost:
+        await apply_delta(session, user, -settings.spin_cost, "spin")
+        cost = settings.spin_cost
+    else:
+        raise GameError("энергия закончилась: подожди восстановления")
 
     plate = await create_unique_plate(session, user.id, source="spin")
 
     user.spins += 1
-    user.last_spin_at = now()
     user.best_score = max(user.best_score, plate.score)
     award_xp(user, 5)
     session.add(Spin(user_id=user.id, plate_id=plate.id, cost=cost))
+    await bump(session, user, "spin")
+    if tier_index(plate.rarity) >= tier_index("rare"):
+        await bump(session, user, "rare")
     return plate, cost
 
 
@@ -100,6 +91,7 @@ async def sell_plate(session: AsyncSession, user_id: int, plate_id: int) -> int:
     amount = plate.price
     await apply_delta(session, user, amount, "sell", ref=plate.code)
     award_xp(user, 3)
+    await bump(session, user, "sell")
     plate.owner_id = None
     return amount
 
@@ -124,6 +116,7 @@ async def claim_daily(session: AsyncSession, user_id: int) -> int:
     await apply_delta(session, user, amount, "daily", ref=str(today))
     session.add(DailyClaim(user_id=user.id, day=today, amount=amount))
     award_xp(user, 10)
+    await bump(session, user, "daily")
     return amount
 
 
@@ -198,6 +191,8 @@ async def join_duel(session: AsyncSession, user_id: int, duel_id: int) -> tuple[
         duel.winner_id = winner.id
         duel.status = "finished"
 
+    await bump(session, creator, "duel")
+    await bump(session, opponent, "duel")
     return duel, creator_plate, opponent_plate, payout
 
 

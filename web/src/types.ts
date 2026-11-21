@@ -22,6 +22,9 @@ export type UserT = {
   photo_url: string | null;
   coins: number;
   gems: number;
+  energy: number;
+  energy_max: number;
+  energy_in: number;
   xp: number;
   level: number;
   xp_to_next: number;
@@ -31,7 +34,6 @@ export type UserT = {
   duels_lost: number;
   best_score: number;
   streak: number;
-  spin_ready_in: number;
 };
 
 export type MeResponse = {
@@ -81,6 +83,33 @@ export type CollectionT = {
   reward_coins: number;
   reward_gems: number;
   reward_xp: number;
+};
+
+export type TaskT = {
+  code: string;
+  title: string;
+  description: string;
+  kind: string;
+  target: number;
+  progress: number;
+  done: boolean;
+  claimed: boolean;
+  reward_coins: number;
+  reward_energy: number;
+  reward_gems: number;
+};
+
+export type RatingItem = {
+  user_id: number;
+  username: string | null;
+  first_name: string | null;
+  total: number;
+  plates: number;
+};
+
+export type RatingData = {
+  items: RatingItem[];
+  me: { rank: number; total: number; plates: number };
 };
 
 export type Tx = {

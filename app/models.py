@@ -30,8 +30,11 @@ class User(Base):
     photo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     coins: Mapped[int] = mapped_column(Integer, default=0)
     gems: Mapped[int] = mapped_column(Integer, default=0)
+    energy: Mapped[int] = mapped_column(Integer, default=0)
+    energy_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     xp: Mapped[int] = mapped_column(Integer, default=0)
     level: Mapped[int] = mapped_column(Integer, default=1)
+    season_points: Mapped[int] = mapped_column(Integer, default=0)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     spins: Mapped[int] = mapped_column(Integer, default=0)
@@ -155,4 +158,36 @@ class UserCollection(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "collection_id", name="uq_user_collection"),
+    )
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(48), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(96))
+    description: Mapped[str] = mapped_column(String(256), default="")
+    kind: Mapped[str] = mapped_column(String(8), default="daily")
+    metric: Mapped[str] = mapped_column(String(24))
+    target: Mapped[int] = mapped_column(Integer, default=1)
+    reward_coins: Mapped[int] = mapped_column(Integer, default=0)
+    reward_energy: Mapped[int] = mapped_column(Integer, default=0)
+    reward_gems: Mapped[int] = mapped_column(Integer, default=0)
+    sort: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class TaskProgress(Base):
+    __tablename__ = "task_progress"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), index=True)
+    period: Mapped[str] = mapped_column(String(16))
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "task_id", "period", name="uq_task_progress"),
     )

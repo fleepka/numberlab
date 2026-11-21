@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from app.economy import now
-from app.game import next_spin_at
+from app.energy import ENERGY_MAX, next_in
 from app.models import Plate, Transaction, User
 from app.plates import RARITY_LABELS, parse_code
 from app.progress import xp_to_next
@@ -29,13 +28,6 @@ def plate_json(plate: Plate) -> dict:
     }
 
 
-def spin_ready_in(user: User) -> int:
-    ready = next_spin_at(user)
-    if ready is None:
-        return 0
-    return max(0, int((ready - now()).total_seconds()))
-
-
 def user_json(user: User) -> dict:
     return {
         "id": user.id,
@@ -45,6 +37,9 @@ def user_json(user: User) -> dict:
         "photo_url": user.photo_url,
         "coins": user.coins,
         "gems": user.gems,
+        "energy": user.energy,
+        "energy_max": ENERGY_MAX,
+        "energy_in": next_in(user),
         "xp": user.xp,
         "level": user.level,
         "xp_to_next": xp_to_next(user.xp),
@@ -54,7 +49,6 @@ def user_json(user: User) -> dict:
         "duels_lost": user.duels_lost,
         "best_score": user.best_score,
         "streak": user.streak,
-        "spin_ready_in": spin_ready_in(user),
     }
 
 

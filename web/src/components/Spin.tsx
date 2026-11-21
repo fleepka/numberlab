@@ -7,6 +7,14 @@ import { Plate } from "./Plate";
 const LETTERS = "АВЕКМНОРСТУХ";
 const REGIONS = ["77", "50", "99", "01", "78", "97", "199", "777", "97"];
 
+const LINKS = [
+  { id: "shop", label: "Витрина", hint: "номера за Stars" },
+  { id: "collections", label: "Коллекции", hint: "награды за наборы" },
+  { id: "duels", label: "Дуэли", hint: "1 на 1 на монеты" },
+] as const;
+
+type NextTab = (typeof LINKS)[number]["id"];
+
 function pick(source: string): string {
   return source[Math.floor(Math.random() * source.length)];
 }
@@ -21,18 +29,20 @@ export function SpinView({
   user,
   refresh,
   notify,
+  onNavigate,
 }: {
   user: UserT;
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
+  onNavigate?: (tab: NextTab) => void;
 }) {
   const [rolling, setRolling] = useState(false);
   const [preview, setPreview] = useState(previewCode);
   const [result, setResult] = useState<PlateT | null>(null);
-  const [readyIn, setReadyIn] = useState(user.spin_ready_in);
+  const [readyIn, setReadyIn] = useState(user.energy_in);
   const interval = useRef<number | null>(null);
 
-  useEffect(() => setReadyIn(user.spin_ready_in), [user.spin_ready_in]);
+  useEffect(() => setReadyIn(user.energy_in), [user.energy_in]);
 
   useEffect(() => {
     if (readyIn <= 0) return;
@@ -44,13 +54,13 @@ export function SpinView({
     if (interval.current) window.clearInterval(interval.current);
   }, []);
 
-  const free = readyIn <= 0;
+  const free = user.energy > 0;
   const cost = free ? 0 : 50;
 
   async function roll() {
     if (rolling) return;
     if (!free && user.coins < cost) {
-      notify("Не хватает монет на спин", "err");
+      notify("Энергии нет, а монет на крутку не хватает", "err");
       return;
     }
 
@@ -65,7 +75,7 @@ export function SpinView({
       await new Promise((resolve) => setTimeout(resolve, wait));
       setPreview(response.plate.code);
       setResult(response.plate);
-      setReadyIn(response.spin_ready_in);
+      setReadyIn(response.energy_in);
       tg?.HapticFeedback?.impactOccurred("medium");
       await refresh();
     } catch (error) {
@@ -101,18 +111,33 @@ export function SpinView({
       </div>
 
       <button className="btn btn-primary btn-lg" onClick={roll} disabled={rolling}>
-        {rolling ? "Крутим…" : free ? "Крутить бесплатно" : `Крутить · ${cost} монет`}
+        {rolling ? "Крутим…" : free ? "Крутить · ⚡1" : `Крутить · ${cost} монет`}
       </button>
 
       <div className="stage-meta">
-        {free ? (
-          <span>Бесплатный спин готов</span>
+        <span>
+          ⚡ {user.energy}/{user.energy_max}
+        </span>
+        <span className="dot" />
+        {user.energy >= user.energy_max ? (
+          <span>Энергия полная</span>
         ) : (
-          <span>Следующий бесплатный через {formatTime(readyIn)}</span>
+          <span>+1 через {formatTime(readyIn)}</span>
         )}
         <span className="dot" />
         <span>Номеров: {user.spins}</span>
       </div>
+
+      {onNavigate && (
+        <div className="link-row">
+          {LINKS.map((link) => (
+            <button className="link-card" key={link.id} onClick={() => onNavigate(link.id)}>
+              <span className="link-label">{link.label}</span>
+              <span className="muted small">{link.hint}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {result && result.factors && result.factors.length > 0 && (
         <div className="panel factors">

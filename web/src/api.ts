@@ -5,6 +5,8 @@ import type {
   MeResponse,
   Offer,
   PlateT,
+  RatingData,
+  TaskT,
   Tx,
 } from "./types";
 
@@ -51,9 +53,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   me: () => request<MeResponse>("/api/me"),
   spin: () =>
-    request<{ plate: PlateT; cost: number; coins: number; spin_ready_in: number }>("/api/spin", {
-      method: "POST",
-    }),
+    request<{ plate: PlateT; cost: number; coins: number; energy: number; energy_in: number }>(
+      "/api/spin",
+      { method: "POST" },
+    ),
   daily: () =>
     request<{ amount: number; coins: number; streak: number }>("/api/daily", { method: "POST" }),
   garage: () => request<{ plates: PlateT[] }>("/api/garage"),
@@ -72,6 +75,16 @@ export const api = {
       level: number;
       rewards: { coins: number; gems: number; xp: number };
     }>(`/api/collections/${id}/claim`, { method: "POST" }),
+  tasks: () => request<{ items: TaskT[] }>("/api/tasks"),
+  claimTask: (code: string) =>
+    request<{
+      code: string;
+      coins: number;
+      gems: number;
+      energy: number;
+      rewards: { coins: number; energy: number; gems: number };
+    }>(`/api/tasks/${code}/claim`, { method: "POST" }),
+  rating: () => request<RatingData>("/api/rating"),
   duels: () => request<{ open: DuelT[]; mine: DuelT[] }>("/api/duels"),
   createDuel: (bet: number) =>
     request<{ duel: DuelT; coins: number }>("/api/duels", {

@@ -5,11 +5,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_user
-from app.api.serializers import plate_json, spin_ready_in, tx_json, user_json
+from app.api.serializers import plate_json, tx_json, user_json
 from app.db import get_session
 from app.collections import catalog as collections_catalog
 from app.collections import claim as claim_collection
 from app.economy import history
+from app.energy import next_in, regenerate
+from app.rating import leaderboard, position
+from app.tasks import catalog as tasks_catalog
+from app.tasks import claim as claim_task
 from app.game import GameError, claim_daily, sell_plate, spin
 from app.models import Plate, User
 
@@ -18,6 +22,8 @@ router = APIRouter(prefix="/api", tags=["profile"])
 
 @router.get("/me")
 async def me(user: User = Depends(current_user), session: AsyncSession = Depends(get_session)) -> dict:
+    regenerate(user)
+    await session.commit()
     garage_count = await session.scalar(
         select(func.count(Plate.id)).where(Plate.owner_id == user.id)
     )
@@ -50,7 +56,8 @@ async def do_spin(
         "plate": plate_json(plate),
         "cost": cost,
         "coins": user.coins,
-        "spin_ready_in": spin_ready_in(user),
+        "energy": user.energy,
+        "energy_in": next_in(user),
     }
 
 
@@ -130,6 +137,38 @@ async def claim_collection_view(
         raise HTTPException(status_code=400, detail=str(error)) from None
 
     return result
+
+
+@router.get("/tasks")
+async def tasks_view(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return {"items": await tasks_catalog(session, user.id)}
+
+
+@router.post("/tasks/{code}/claim")
+async def claim_task_view(
+    code: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        result = await claim_task(session, user.id, code)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+
+    return result
+
+
+@router.get("/rating")
+async def rating_view(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return {"items": await leaderboard(session), "me": await position(session, user.id)}
 
 
 @router.get("/feed")

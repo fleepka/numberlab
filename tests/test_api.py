@@ -3,6 +3,7 @@ from datetime import date
 from sqlalchemy import func, select
 
 from app.db import SessionLocal
+from app.energy import ENERGY_MAX
 from app.models import Collection, Plate, User
 from app.shop import offers_for
 
@@ -28,15 +29,29 @@ async def test_user_created_with_start_balance(client):
     assert data["user"]["tg_id"] == 1001
 
 
-async def test_spin_free_then_paid(client):
+async def test_spin_spends_energy_first(client):
     first = (await client.post("/api/spin", headers=headers("1100"))).json()
     assert first["cost"] == 0
     assert first["coins"] == 1500
+    assert first["energy"] == ENERGY_MAX - 1
 
     second = (await client.post("/api/spin", headers=headers("1100"))).json()
-    assert second["cost"] == 50
-    assert second["coins"] == 1450
+    assert second["cost"] == 0
+    assert second["coins"] == 1500
+    assert second["energy"] == ENERGY_MAX - 2
     assert second["plate"]["code"] != first["plate"]["code"]
+
+
+async def test_spin_costs_coins_without_energy(client):
+    await get_me(client, "1101")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1101))
+        user.energy = 0
+        await session.commit()
+
+    paid = (await client.post("/api/spin", headers=headers("1101"))).json()
+    assert paid["cost"] == 50
+    assert paid["coins"] == 1450
 
 
 async def test_sell_plate_credits_exactly_price(client):
@@ -48,6 +63,40 @@ async def test_sell_plate_credits_exactly_price(client):
 
     again = await client.post(f"/api/garage/{plate['id']}/sell", headers=headers("1200"))
     assert again.status_code == 400
+
+
+async def test_task_reward_claimed_once(client):
+    await client.post("/api/spin", headers=headers("1400"))
+
+    listing = (await client.get("/api/tasks", headers=headers("1400"))).json()["items"]
+    task = next(item for item in listing if item["code"] == "first_plate")
+    assert task["progress"] == 1
+    assert task["done"] is True
+    assert task["claimed"] is False
+
+    claim = await client.post("/api/tasks/first_plate/claim", headers=headers("1400"))
+    assert claim.status_code == 200
+    body = claim.json()
+    assert body["rewards"]["coins"] == 200
+    assert body["coins"] == 1700
+
+    again = await client.post("/api/tasks/first_plate/claim", headers=headers("1400"))
+    assert again.status_code == 400
+
+
+async def test_task_blocked_until_done(client):
+    response = await client.post("/api/tasks/daily_spin_5/claim", headers=headers("1401"))
+    assert response.status_code == 400
+
+
+async def test_rating_shows_garage_value(client):
+    plate = (await client.post("/api/spin", headers=headers("1402"))).json()["plate"]
+
+    data = (await client.get("/api/rating", headers=headers("1402"))).json()
+    assert data["me"]["rank"] == 1
+    assert data["me"]["plates"] == 1
+    assert data["me"]["total"] == plate["price"]
+    assert data["items"][0]["total"] == plate["price"]
 
 
 async def test_daily_once_per_day(client):

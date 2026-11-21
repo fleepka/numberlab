@@ -4,20 +4,23 @@ import { CollectionsView } from "./components/Collections";
 import { DuelsView } from "./components/Duels";
 import { GarageView } from "./components/Garage";
 import { ProfileView } from "./components/Profile";
+import { RatingView } from "./components/Rating";
 import { ShopView } from "./components/Shop";
 import { SpinView } from "./components/Spin";
+import { TasksView } from "./components/Tasks";
 import type { MeResponse } from "./types";
 
-type Tab = "spin" | "garage" | "collections" | "duels" | "shop" | "profile";
+type Tab = "spin" | "garage" | "collections" | "duels" | "shop" | "tasks" | "rating" | "profile";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "spin", label: "Спин" },
+const NAV: { id: Tab; label: string }[] = [
+  { id: "spin", label: "Главная" },
   { id: "garage", label: "Гараж" },
-  { id: "collections", label: "Коллекции" },
-  { id: "duels", label: "Дуэли" },
-  { id: "shop", label: "Витрина" },
+  { id: "tasks", label: "Задания" },
+  { id: "rating", label: "Рейтинг" },
   { id: "profile", label: "Профиль" },
 ];
+
+export type TabId = Tab;
 
 const ICONS: Record<Tab, string> = {
   spin: "M12 3a9 9 0 1 0 9 9M12 7v5l3 2",
@@ -25,6 +28,8 @@ const ICONS: Record<Tab, string> = {
   collections: "M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5",
   duels: "M5 19L19 5M14 5h5v5M5 5l5 5M14 14l5 5",
   shop: "M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 0 1 6 0v2",
+  tasks: "M8 6h11M8 12h11M8 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
+  rating: "M8 21V10M12 21V4M16 21v-7M4 21h16",
   profile: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
 };
 
@@ -107,13 +112,22 @@ export default function App() {
       </header>
 
       <main className="content">
-        {tab === "spin" && <SpinView user={me.user} refresh={refresh} notify={notify} />}
+        {tab === "spin" && (
+          <SpinView
+            user={me.user}
+            refresh={refresh}
+            notify={notify}
+            onNavigate={(next) => setTab(next)}
+          />
+        )}
         {tab === "garage" && <GarageView refresh={refresh} notify={notify} />}
         {tab === "collections" && <CollectionsView refresh={refresh} notify={notify} />}
         {tab === "duels" && (
           <DuelsView coins={me.user.coins} selfId={me.user.id} refresh={refresh} notify={notify} />
         )}
         {tab === "shop" && <ShopView refresh={refresh} notify={notify} />}
+        {tab === "tasks" && <TasksView refresh={refresh} notify={notify} />}
+        {tab === "rating" && <RatingView selfId={me.user.id} notify={notify} />}
         {tab === "profile" && (
           <ProfileView
             user={me.user}
@@ -126,7 +140,7 @@ export default function App() {
       </main>
 
       <nav className="nav">
-        {TABS.map((item) => (
+        {NAV.map((item) => (
           <button
             key={item.id}
             className={tab === item.id ? "nav-item nav-active" : "nav-item"}
