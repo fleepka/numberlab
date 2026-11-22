@@ -94,6 +94,21 @@ export function GarageView({
   if (!data) return <div className="view center muted">Загружаем гараж…</div>;
 
   const { plates, income } = data;
+  const slots = data.slots;
+
+  async function buySlots() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await api.buySlots();
+      notify("Гараж расширен на 5 мест", "ok");
+      await Promise.all([load(), refresh()]);
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(false);
+    }
+  }
   const selectedSum = plates
     .filter((plate) => selected.includes(plate.id))
     .reduce((sum, plate) => sum + plate.price, 0);
@@ -126,7 +141,9 @@ export function GarageView({
             <div className="muted small">Стоимость гаража</div>
             <div className="garage-total">{money(income.total)}</div>
           </div>
-          <span className="badge">{plates.length} номеров</span>
+          <span className="badge">
+            {plates.length} / {slots} мест
+          </span>
         </div>
 
         <div className="income-row">
@@ -134,13 +151,18 @@ export function GarageView({
             <div className="muted small">Доход гаража</div>
             <div className="income-rate">+{money(income.rate)} в час</div>
           </div>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={claimIncome}
-            disabled={busy || income.available <= 0}
-          >
-            {income.available > 0 ? `Забрать ${money(income.available)}` : "Копится"}
-          </button>
+          <div className="selection-actions">
+            <button className="btn btn-ghost btn-sm" onClick={buySlots} disabled={busy}>
+              +5 мест · 200 ◆
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={claimIncome}
+              disabled={busy || income.available <= 0}
+            >
+              {income.available > 0 ? `Забрать ${money(income.available)}` : "Копится"}
+            </button>
+          </div>
         </div>
       </div>
 

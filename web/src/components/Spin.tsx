@@ -32,12 +32,14 @@ function previewCode(): string {
 export function SpinView({
   user,
   stakes,
+  energyCosts,
   refresh,
   notify,
   onNavigate,
 }: {
   user: UserT;
   stakes: Record<string, number>;
+  energyCosts: Record<string, number>;
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
   onNavigate?: (tab: NextTab) => void;
@@ -70,13 +72,14 @@ export function SpinView({
     if (interval.current) window.clearInterval(interval.current);
   }, []);
 
-  const free = user.energy > 0;
+  const need = energyCosts[stake] ?? 1;
+  const free = user.energy >= need;
   const cost = free ? 0 : stakes[stake] ?? 0;
 
   async function roll() {
     if (rolling) return;
     if (!free && user.coins < cost) {
-      notify("Не хватает рублей на такую прокрутку", "err");
+      notify(`Нужно ${need} ⚡ или ${money(cost)}`, "err");
       return;
     }
 
@@ -179,28 +182,26 @@ export function SpinView({
         </button>
       </div>
 
-      {!free && (
-        <div className="stake-block">
-          <div className="stake-head">
-            <span className="muted small">Что крутим</span>
-            <span className="muted small">энергии нет — платим рублями</span>
-          </div>
-          <div className="chips">
-            {Object.entries(stakes).map(([tier, price]) => (
-              <button
-                key={tier}
-                className={stake === tier ? "chip chip-active" : "chip"}
-                onClick={() => setStake(tier)}
-              >
-                {rarityLabel(tier)} · {money(price)}
-              </button>
-            ))}
-          </div>
+      <div className="stake-block">
+        <div className="stake-head">
+          <span className="muted small">Что крутим</span>
+          <span className="muted small">⚡ или ₽ — на выбор цена спишет то, чего хватает</span>
         </div>
-      )}
+        <div className="chips">
+          {Object.entries(stakes).map(([tier, price]) => (
+            <button
+              key={tier}
+              className={stake === tier ? "chip chip-active" : "chip"}
+              onClick={() => setStake(tier)}
+            >
+              {rarityLabel(tier)} · ⚡{energyCosts[tier] ?? 1} / {money(price)}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <button className="btn btn-primary btn-lg" onClick={roll} disabled={rolling}>
-        {rolling ? "Крутим…" : free ? "Крутить · ⚡1" : `Крутить · ${money(cost)}`}
+        {rolling ? "Крутим…" : free ? `Крутить · ⚡${need}` : `Крутить · ${money(cost)}`}
       </button>
 
       <div className="energy-line">

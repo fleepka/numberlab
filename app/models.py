@@ -55,6 +55,7 @@ class User(Base):
     garage_income_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    garage_slots: Mapped[int] = mapped_column(Integer, default=22)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

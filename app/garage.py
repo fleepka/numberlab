@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy import GameError, apply_delta, lock_user, now
@@ -13,6 +13,11 @@ from app.tasks import bump
 INCOME_SHARE = 0.01
 INCOME_CAP_HOURS = 24
 MAX_BATCH = 50
+
+GARAGE_START = 22
+GARAGE_STEP = 5
+GARAGE_MAX = 50
+SLOT_PRICE_GEMS = 200
 
 
 def _aware(value: datetime) -> datetime:
@@ -28,6 +33,24 @@ async def garage_plates(session: AsyncSession, user_id: int) -> list[Plate]:
 
 def rate_for(total: int) -> int:
     return int(total * INCOME_SHARE)
+
+
+async def ensure_space(session: AsyncSession, user_id: int, slots: int) -> None:
+    used = await session.scalar(select(func.count(Plate.id)).where(Plate.owner_id == user_id))
+    if int(used or 0) >= slots:
+        raise GameError("гараж переполнен — продай номер или купи места")
+
+
+async def buy_slots(session: AsyncSession, user_id: int) -> dict:
+    user = await lock_user(session, user_id)
+    if user.garage_slots >= GARAGE_MAX:
+        raise GameError("больше мест не продаётся")
+    if user.gems < SLOT_PRICE_GEMS:
+        raise GameError(f"нужно {SLOT_PRICE_GEMS} ◆")
+
+    await apply_delta(session, user, -SLOT_PRICE_GEMS, "garage_slots", currency="gems")
+    user.garage_slots = min(GARAGE_MAX, user.garage_slots + GARAGE_STEP)
+    return {"slots": user.garage_slots, "gems": user.gems}
 
 
 async def income_state(session: AsyncSession, user: User) -> dict:

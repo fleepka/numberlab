@@ -34,6 +34,9 @@ export type UserT = {
   duels_lost: number;
   best_score: number;
   streak: number;
+  garage_slots: number;
+  season_points: number;
+  pass_premium: boolean;
 };
 
 export type NickT = {
@@ -108,6 +111,7 @@ export type GarageIncome = {
 export type GarageData = {
   plates: PlateT[];
   income: GarageIncome;
+  slots: number;
 };
 
 export type MeResponse = {
@@ -115,6 +119,7 @@ export type MeResponse = {
   garage_count: number;
   top: PlateT[];
   stakes: Record<string, number>;
+  energy_costs: Record<string, number>;
 };
 
 export type DuelT = {

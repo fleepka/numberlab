@@ -49,6 +49,9 @@ def user_json(user: User) -> dict:
         "duels_lost": user.duels_lost,
         "best_score": user.best_score,
         "streak": user.streak,
+        "garage_slots": user.garage_slots,
+        "season_points": user.season_points,
+        "pass_premium": user.pass_premium,
     }
 
 

@@ -75,12 +75,21 @@ def offers_for(user_id: int, day: date) -> list[PlateValue]:
 
 
 async def prepare_purchase(session: AsyncSession, user: User, code: str) -> Purchase:
+    from app.garage import ensure_space
+
     offer = next((o for o in offers_for(user.id, date.today()) if o.code == code), None)
     if offer is None:
         raise ShopError("этого номера нет в витрине")
 
     if await session.scalar(select(Plate.id).where(Plate.code == code)):
         raise ShopError("номер уже занят другим игроком")
+
+    try:
+        await ensure_space(session, user.id, user.garage_slots)
+    except Exception as error:
+        if error.__class__.__name__ != "GameError":
+            raise
+        raise ShopError("гараж переполнен — освободи место") from None
 
     purchase = Purchase(
         user_id=user.id,

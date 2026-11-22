@@ -56,6 +56,15 @@ async def test_spin_costs_coins_without_energy(client):
     assert paid["plate"]["rarity"] == "common"
 
 
+async def test_rare_spin_costs_energy_and_returns_rare(client):
+    response = await client.post("/api/spin?tier=rare", headers=headers("1103"))
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["cost"] == 0
+    assert body["energy"] == ENERGY_MAX - 8
+    assert body["plate"]["rarity"] == "rare"
+
+
 async def test_paid_spin_needs_enough_money(client):
     await get_me(client, "1102")
     async with SessionLocal() as session:
@@ -436,6 +445,36 @@ async def test_friends_lists_invited_and_contest(client):
     assert data["friends"][0]["level"] >= 1
     assert data["contest"]["me"]["place"] >= 1
     assert data["contest"]["items"][0]["invites"] >= 1
+
+
+async def test_buy_garage_slots(client):
+    await get_me(client, "2500")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2500))
+        user.gems = 250
+        await session.commit()
+
+    response = await client.post("/api/garage/slots", headers=headers("2500"))
+    assert response.status_code == 200, response.text
+    assert response.json()["slots"] == 27
+    assert response.json()["gems"] == 50
+
+    second = await client.post("/api/garage/slots", headers=headers("2500"))
+    assert second.status_code == 400
+
+
+async def test_full_garage_blocks_spin(client):
+    await get_me(client, "2510")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2510))
+        user.garage_slots = 1
+        await session.commit()
+
+    first = await client.post("/api/spin?tier=common", headers=headers("2510"))
+    assert first.status_code == 200
+
+    second = await client.post("/api/spin?tier=common", headers=headers("2510"))
+    assert second.status_code == 400
 
 
 async def test_daily_once_per_day(client):

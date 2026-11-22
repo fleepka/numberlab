@@ -88,6 +88,8 @@ export const api = {
     request<{ amount: number; coins: number; rate: number }>("/api/garage/income", {
       method: "POST",
     }),
+  buySlots: () =>
+    request<{ slots: number; gems: number }>("/api/garage/slots", { method: "POST" }),
   craft: (ids: number[]) =>
     request<{
       plate: PlateT;

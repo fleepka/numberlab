@@ -25,7 +25,7 @@ from app.rating import leaderboard, position
 from app.tasks import catalog as tasks_catalog
 from app.tasks import claim as claim_task
 from app.game import GameError, claim_daily, sell_plate, spin
-from app.garage import claim_income, income_state, sell_many
+from app.garage import buy_slots, claim_income, income_state, sell_many
 from app.hunts import claim as claim_hunt
 from app.hunts import view as hunt_state
 from app.models import Plate, Purchase, User
@@ -35,7 +35,7 @@ from app.passes import PREMIUM_STARS
 from app.passes import claim as claim_pass
 from app.passes import unlock as unlock_pass
 from app.passes import view as pass_view
-from app.plates import STAKES
+from app.plates import ENERGY_COST, STAKES
 from app.tg import stars_invoice
 
 router = APIRouter(prefix="/api", tags=["profile"])
@@ -56,6 +56,7 @@ async def me(user: User = Depends(current_user), session: AsyncSession = Depends
         "garage_count": garage_count or 0,
         "top": [plate_json(p) for p in top],
         "stakes": STAKES,
+        "energy_costs": ENERGY_COST,
     }
 
 
@@ -111,7 +112,25 @@ async def garage(
         .order_by(Plate.price.desc(), Plate.id.desc())
         .limit(300)
     )
-    return {"plates": [plate_json(p) for p in plates], "income": await income_state(session, user)}
+    return {
+        "plates": [plate_json(p) for p in plates],
+        "income": await income_state(session, user),
+        "slots": user.garage_slots,
+    }
+
+
+@router.post("/garage/slots")
+async def buy_garage_slots(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        result = await buy_slots(session, user.id)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
 
 
 @router.post("/garage/sell")

@@ -9,10 +9,19 @@ from app.config import settings
 from app.economy import GameError, apply_delta, lock_user, lock_users, now
 from app.energy import regenerate
 from app.friends import pay_share
+from app.garage import ensure_space
 from app.hunts import register as register_hunt
 from app.passes import POINTS_SPIN
 from app.models import DailyClaim, Duel, Plate, Spin, User
-from app.plates import STAKES, PlateValue, pretty_plate, spin_plate, tier_index
+from app.plates import (
+    ENERGY_COST,
+    STAKES,
+    PlateValue,
+    plate_for_tier,
+    pretty_plate,
+    spin_plate,
+    tier_index,
+)
 from app.progress import award_xp
 from app.tasks import bump
 
@@ -62,16 +71,17 @@ async def spin(
         raise GameError("аккаунт заблокирован")
 
     regenerate(user)
-    if user.energy > 0:
-        user.energy -= 1
+    await ensure_space(session, user.id, user.garage_slots)
+    tier = stake if stake in STAKES else "common"
+    need = ENERGY_COST[tier]
+    if user.energy >= need:
+        user.energy -= need
         cost = 0
-        tier = ""
-        factory = pretty_plate
+        factory = lambda: plate_for_tier(tier)  # noqa: E731
     else:
-        tier = stake if stake in STAKES else "common"
         cost = STAKES[tier]
         if user.coins < cost:
-            raise GameError("не хватает рублей на такую прокрутку")
+            raise GameError(f"нужно {need} ⚡ или {cost} ₽ на такую прокрутку")
         await apply_delta(session, user, -cost, "spin", ref=tier)
         factory = lambda: spin_plate(tier)  # noqa: E731
     plate = await create_unique_plate(session, user.id, source="spin", factory=factory)

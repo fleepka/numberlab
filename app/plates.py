@@ -77,6 +77,15 @@ STAKES = {
     "mythic": 1000000,
 }
 
+# Сколько энергии стоит прокрутка выбранной редкости.
+ENERGY_COST = {
+    "common": 1,
+    "rare": 8,
+    "epic": 16,
+    "legendary": 64,
+    "mythic": 256,
+}
+
 _ASC = {f"{i}{i + 1}{i + 2}" for i in range(1, 8)}
 _DESC = {f"{i}{i - 1}{i - 2}" for i in range(3, 10)}
 

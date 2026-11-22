@@ -68,9 +68,13 @@ async def use(session: AsyncSession, user_id: int, rarity: str) -> dict:
         raise GameError("такого билета нет")
 
     row.count -= 1
-    plate = await _new_plate(session, user_id, rarity)
+
+    from app.garage import ensure_space
 
     user = await lock_user(session, user_id)
+    await ensure_space(session, user.id, user.garage_slots)
+    plate = await _new_plate(session, user_id, rarity)
+
     user.spins += 1
     user.best_score = max(user.best_score, plate.score)
     award_xp(user, 5)

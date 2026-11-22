@@ -154,6 +154,7 @@ export default function App() {
           <SpinView
             user={me.user}
             stakes={me.stakes}
+            energyCosts={me.energy_costs}
             refresh={refresh}
             notify={notify}
             onNavigate={(next) => setTab(next)}
