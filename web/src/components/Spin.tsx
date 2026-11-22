@@ -9,9 +9,9 @@ const LETTERS = "АВЕКМНОРСТУХ";
 const REGIONS = ["77", "50", "99", "01", "78", "97", "199", "777", "97"];
 
 const LINKS = [
-  { id: "shop", label: "Витрина", hint: "номера за Stars" },
-  { id: "collections", label: "Коллекции", hint: "награды за наборы" },
-  { id: "duels", label: "Дуэли", hint: "1 на 1 на монеты" },
+  { id: "shop", label: "Витрина", hint: "за Stars" },
+  { id: "collections", label: "Коллекции", hint: "награды" },
+  { id: "duels", label: "Дуэли", hint: "1 на 1" },
 ] as const;
 
 type NextTab = (typeof LINKS)[number]["id"] | "garage";
@@ -42,7 +42,15 @@ export function SpinView({
   const [result, setResult] = useState<PlateT | null>(null);
   const [selling, setSelling] = useState(false);
   const [readyIn, setReadyIn] = useState(user.energy_in);
+  const [feed, setFeed] = useState<{ code: string; rarity: string; owner: string }[]>([]);
   const interval = useRef<number | null>(null);
+
+  useEffect(() => {
+    api
+      .feed()
+      .then((data) => setFeed(data.items.slice(0, 4)))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => setReadyIn(user.energy_in), [user.energy_in]);
 
@@ -181,6 +189,21 @@ export function SpinView({
         <span className="muted">номеров: {user.spins}</span>
       </div>
 
+      <div className="stat-grid">
+        <div className="stat">
+          <span className="stat-value">{user.spins}</span>
+          <span className="stat-label">номеров</span>
+        </div>
+        <div className="stat">
+          <span className="stat-value">{user.best_score}</span>
+          <span className="stat-label">лучший счёт</span>
+        </div>
+        <div className="stat">
+          <span className="stat-value">{user.duels_won}</span>
+          <span className="stat-label">побед в дуэлях</span>
+        </div>
+      </div>
+
       {onNavigate && (
         <div className="link-row">
           {LINKS.map((link) => (
@@ -188,6 +211,26 @@ export function SpinView({
               <span className="link-label">{link.label}</span>
               <span className="muted small">{link.hint}</span>
             </button>
+          ))}
+        </div>
+      )}
+
+      {feed.length > 0 && (
+        <div className="panel feed">
+          <div className="section-head">
+            <h3>Редкие сейчас</h3>
+            <span className="muted small">лента</span>
+          </div>
+          {feed.map((item) => (
+            <div className="feed-row" key={`${item.code}-${item.owner}`}>
+              <span className="feed-code" style={{ color: rarityColor(item.rarity) }}>
+                {item.code}
+              </span>
+              <span className="muted small feed-owner">{item.owner}</span>
+              <span className="feed-rarity" style={{ color: rarityColor(item.rarity) }}>
+                {rarityLabel(item.rarity)}
+              </span>
+            </div>
           ))}
         </div>
       )}
