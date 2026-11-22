@@ -58,6 +58,7 @@ class User(Base):
     garage_slots: Mapped[int] = mapped_column(Integer, default=22)
     vip_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     frame: Mapped[str] = mapped_column(String(16), default="")
+    theme: Mapped[str] = mapped_column(String(24), default="champagne")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -222,7 +223,6 @@ class Ticket(Base):
 
 class Hunt(Base):
     __tablename__ = "hunts"
-
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(48), unique=True, index=True)
     day: Mapped[date] = mapped_column(Date, index=True)
@@ -260,7 +260,6 @@ class PassClaim(Base):
 
 class Message(Base):
     __tablename__ = "messages"
-
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     text: Mapped[str] = mapped_column(String(240))
@@ -271,7 +270,6 @@ class Message(Base):
 
 class Auction(Base):
     __tablename__ = "auctions"
-
     id: Mapped[int] = mapped_column(primary_key=True)
     plate_code: Mapped[str] = mapped_column(String(16))
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -281,3 +279,27 @@ class Auction(Base):
     )
     closed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Promo(Base):
+    __tablename__ = "promos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    kind: Mapped[str] = mapped_column(String(12))
+    value: Mapped[int] = mapped_column(Integer, default=0)
+    ticket: Mapped[str] = mapped_column(String(16), default="")
+    uses_left: Mapped[int] = mapped_column(Integer, default=0)
+    per_user: Mapped[int] = mapped_column(Integer, default=1)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class PromoUse(Base):
+    __tablename__ = "promo_uses"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    promo_id: Mapped[int] = mapped_column(ForeignKey("promos.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("user_id", "promo_id", name="uq_promo_use"),)

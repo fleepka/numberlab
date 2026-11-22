@@ -19,6 +19,7 @@ import type {
   RatingData,
   ShopData,
   TaskT,
+  ThemeItem,
   TicketT,
   Tx,
 } from "./types";
@@ -142,7 +143,17 @@ export const api = {
       rewards: { coins: number; energy: number; ticket: string | null };
     }>("/api/hunt/claim", { method: "POST" }),
   pass: () => request<PassData>("/api/pass"),
-  chat: (after = 0) => request<{ items: ChatMessage[] }>(`/api/chat?after=${after}`),
+  themes: () => request<{ items: ThemeItem[] }>("/api/settings/themes"),
+  setTheme: (theme: string) =>
+    request<{ theme: string }>("/api/settings/theme", {
+      method: "POST",
+      body: JSON.stringify({ theme }),
+    }),
+  redeemPromo: (code: string) =>
+    request<{
+      code: string;
+      given: { kind: string; value: number; ticket: string };
+    }>("/api/promo", { method: "POST", body: JSON.stringify({ code }) }),  chat: (after = 0) => request<{ items: ChatMessage[] }>(`/api/chat?after=${after}`),
   sendMessage: (text: string) =>
     request<{ id: number }>("/api/chat", { method: "POST", body: JSON.stringify({ text }) }),
   nick: () => request<NickT>("/api/nick"),

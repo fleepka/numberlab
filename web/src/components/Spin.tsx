@@ -8,6 +8,14 @@ import { Plate } from "./Plate";
 const LETTERS = "АВЕКМНОРСТУХ";
 const REGIONS = ["77", "50", "99", "01", "78", "97", "199", "777", "97"];
 
+const EXAMPLES: Record<string, string> = {
+  RU: "А777АА 77",
+  KZ: "777 AAA 01",
+  BY: "7777 AA-7",
+  UZ: "01 A 777 AA",
+  AE: "AA 777",
+};
+
 const LINKS = [
   { id: "shop", label: "Витрина", hint: "за Stars" },
   { id: "collections", label: "Коллекции", hint: "награды" },
@@ -50,6 +58,7 @@ export function SpinView({
   const [stake, setStake] = useState("common");
   const [currency, setCurrency] = useState<"energy" | "rubles">("energy");
   const [country, setCountry] = useState("RU");
+  const [countryOpen, setCountryOpen] = useState(false);
   const [preview, setPreview] = useState(previewCode);
   const [result, setResult] = useState<PlateT | null>(null);
   const [selling, setSelling] = useState(false);
@@ -143,22 +152,41 @@ export function SpinView({
     <section className="view">
       <div className="season-row">
         <span className="season-pill">🏆 Сезон 1 · ещё {daysLeftInMonth()} д</span>
-        <span className="country-pill">
+        <button className="country-pill" onClick={() => setCountryOpen(true)}>
           {countries.find((item) => item.code === country)?.flag ?? "RUS"}
-        </span>
+          <span>{countries.find((item) => item.code === country)?.title ?? "Россия"}</span>
+        </button>
       </div>
 
-      <div className="country-row">
-        {countries.map((item) => (
-          <button
-            key={item.code}
-            className={country === item.code ? "chip chip-sm chip-active" : "chip chip-sm"}
-            onClick={() => setCountry(item.code)}
-          >
-            {item.flag}
-          </button>
-        ))}
-      </div>
+      {countryOpen && (
+        <div className="modal-overlay" onClick={() => setCountryOpen(false)}>
+          <div className="modal-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Номера какой страны крутить</h3>
+              <button className="modal-close" onClick={() => setCountryOpen(false)}>
+                ×
+              </button>
+            </div>
+            <p className="muted small">Формат и цена разные, шансы одинаковые.</p>
+            {countries.map((item) => (
+              <button
+                key={item.code}
+                className={
+                  country === item.code ? "country-option country-option-active" : "country-option"
+                }
+                onClick={() => {
+                  setCountry(item.code);
+                  setCountryOpen(false);
+                }}
+              >
+                <span className="country-flag">{item.flag}</span>
+                <span className="country-title">{item.title}</span>
+                <span className="country-example">{EXAMPLES[item.code] ?? ""}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="stage">
         <div className="stage-glow" style={{ background: color }} />

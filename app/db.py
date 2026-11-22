@@ -41,6 +41,7 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("garage_slots", "INTEGER NOT NULL DEFAULT 22"),
         ("vip_until", "DATE"),
         ("frame", "VARCHAR(16) NOT NULL DEFAULT ''"),
+        ("theme", "VARCHAR(24) NOT NULL DEFAULT 'champagne'"),
         ("pass_premium", "BOOLEAN NOT NULL DEFAULT FALSE"),
         ("nick_since", "DATE"),
         ("nick7", "BOOLEAN NOT NULL DEFAULT FALSE"),

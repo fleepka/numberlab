@@ -9,6 +9,7 @@ import { GarageView } from "./components/Garage";
 import { PassView } from "./components/Pass";
 import { ProfileView } from "./components/Profile";
 import { RatingView } from "./components/Rating";
+import { SettingsView } from "./components/Settings";
 import { ShopView } from "./components/Shop";
 import { SpinView } from "./components/Spin";
 import { TasksView } from "./components/Tasks";
@@ -29,6 +30,7 @@ type Tab =
   | "pass"
   | "chat"
   | "admin"
+  | "settings"
   | "profile";
 
 const NAV: { id: Tab; label: string }[] = [
@@ -60,6 +62,7 @@ const ICONS: Record<Tab, string> = {
   pass: "M5 4h14v16H5zM9 9h6M9 13h6M9 17h3",
   chat: "M4 6h16v10H9l-5 4V6z",
   admin: "M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4zM9 12l2 2 4-4",
+  settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5 10.9a7 7 0 0 0 0 2.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 2.6h5l.3-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6c.1-.3.1-.7.1-1z",
   profile: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
 };
 
@@ -93,6 +96,10 @@ export default function App() {
     tg?.expand();
     refresh().catch((error: Error) => setFatal(error.message));
   }, [refresh]);
+
+  useEffect(() => {
+    if (me?.user.theme) document.documentElement.dataset.theme = me.user.theme;
+  }, [me?.user.theme]);
 
   useEffect(() => {
     if (!toast) return;
@@ -185,6 +192,9 @@ export default function App() {
         {tab === "pass" && <PassView refresh={refresh} notify={notify} />}
         {tab === "chat" && <ChatView selfId={me.user.id} notify={notify} />}
         {tab === "admin" && me.user.is_admin && <AdminView notify={notify} />}
+        {tab === "settings" && (
+          <SettingsView current={me.user.theme} refresh={refresh} notify={notify} />
+        )}
         {tab === "rating" && <RatingView selfId={me.user.id} notify={notify} />}
         {tab === "friends" && <FriendsView selfId={me.user.id} notify={notify} />}
         {tab === "profile" && (

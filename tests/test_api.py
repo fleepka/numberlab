@@ -673,6 +673,41 @@ async def test_cosmetics_catalog_has_frames_and_buys(client):
     assert me["user"]["frame"] == "rose"
 
 
+async def test_promo_redeem_once(client):
+    await get_me(client, "3100")
+
+    redeemed = await client.post(
+        "/api/promo", headers=headers("3100"), json={"code": "numberlab"}
+    )
+    assert redeemed.status_code == 200, redeemed.text
+    assert redeemed.json()["given"]["value"] == 5000
+    assert (await get_me(client, "3100"))["user"]["coins"] == 6500
+
+    again = await client.post("/api/promo", headers=headers("3100"), json={"code": "NUMBERLAB"})
+    assert again.status_code == 400
+
+    unknown = await client.post("/api/promo", headers=headers("3100"), json={"code": "NOPE"})
+    assert unknown.status_code == 400
+
+
+async def test_themes_catalog_and_choice(client):
+    await get_me(client, "3110")
+
+    items = (await client.get("/api/settings/themes", headers=headers("3110"))).json()["items"]
+    assert len(items) == 10
+
+    saved = await client.post(
+        "/api/settings/theme", headers=headers("3110"), json={"theme": "dracula"}
+    )
+    assert saved.status_code == 200
+    assert (await get_me(client, "3110"))["user"]["theme"] == "dracula"
+
+    bad = await client.post(
+        "/api/settings/theme", headers=headers("3110"), json={"theme": "neon"}
+    )
+    assert bad.status_code == 400
+
+
 async def test_daily_once_per_day(client):
     first = await client.post("/api/daily", headers=headers("1300"))
     assert first.status_code == 200

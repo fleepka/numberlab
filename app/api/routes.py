@@ -23,6 +23,7 @@ from app.energy import next_in, regenerate
 from app.friends import invite_link, ladder_view
 from app.friends import contest as friends_contest
 from app.friends import invited_list
+from app.promo import redeem as redeem_promo
 from app.rating import leaderboard, position
 from app.tasks import catalog as tasks_catalog
 from app.tasks import claim as claim_task
@@ -40,6 +41,8 @@ from app.passes import view as pass_view
 from app.plates import COUNTRIES, ENERGY_COST, STAKES
 from app.tg import stars_invoice
 from app.style import buy as buy_frame
+from app.themes import catalog as theme_catalog
+from app.themes import is_valid as theme_valid
 from app.store import PRODUCTS
 from app.store import catalog as product_catalog
 from app.store import fulfil as fulfil_product
@@ -303,6 +306,40 @@ async def rating_view(
         "items": await leaderboard(session, period=period),
         "me": await position(session, user.id, period),
     }
+
+
+@router.post("/promo")
+async def promo_redeem(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        result = await redeem_promo(session, user, str(payload.get("code", "")))
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
+
+
+@router.get("/settings/themes")
+async def themes_list() -> dict:
+    return {"items": theme_catalog()}
+
+
+@router.post("/settings/theme")
+async def set_theme(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    code = str(payload.get("theme", ""))
+    if not theme_valid(code):
+        raise HTTPException(status_code=400, detail="неизвестная тема")
+    user.theme = code
+    await session.commit()
+    return {"theme": code}
 
 
 @router.get("/nick")

@@ -55,6 +55,7 @@ def user_json(user: User) -> dict:
         "pass_premium": user.pass_premium,
         "vip_until": user.vip_until.isoformat() if user.vip_until else None,
         "frame": user.frame,
+        "theme": user.theme,
     }
 
 

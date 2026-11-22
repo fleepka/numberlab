@@ -16,6 +16,7 @@ from app.api.shop import router as shop_router
 from app.bot import dp
 from app.collections import seed as seed_collections
 from app.config import settings
+from app.promo import seed as seed_promos
 from app.tasks import seed as seed_tasks
 from app.db import SessionLocal, init_db
 from app.ratelimit import Limiter
@@ -31,6 +32,7 @@ async def lifespan(_: FastAPI):
     async with SessionLocal() as session:
         await seed_collections(session)
         await seed_tasks(session)
+        await seed_promos(session)
         await session.commit()
     if bot is not None and settings.public_url.startswith("https://"):
         webhook = settings.public_url.rstrip("/") + "/api/telegram/webhook"

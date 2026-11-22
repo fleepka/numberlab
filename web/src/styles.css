@@ -2026,3 +2026,274 @@ button {
   height: 210px;
   top: -70px;
 }
+
+:root {
+  --glow: rgba(233, 199, 126, 0.1);
+}
+
+[data-theme="nord"] {
+  --bg: #242933;
+  --surface: #2e3440;
+  --surface-2: #3b4252;
+  --text: #eceff4;
+  --muted: #8f9bab;
+  --gold: #88c0d0;
+  --gold-2: #5e81ac;
+  --glow: rgba(136, 192, 208, 0.1);
+}
+
+[data-theme="dracula"] {
+  --bg: #21222c;
+  --surface: #282a36;
+  --surface-2: #44475a;
+  --text: #f8f8f2;
+  --muted: #8b8fa8;
+  --gold: #bd93f9;
+  --gold-2: #ff79c6;
+  --glow: rgba(189, 147, 249, 0.12);
+}
+
+[data-theme="tokyo"] {
+  --bg: #16161e;
+  --surface: #1a1b26;
+  --surface-2: #24283b;
+  --text: #c0caf5;
+  --muted: #7a82a8;
+  --gold: #7aa2f7;
+  --gold-2: #bb9af7;
+  --glow: rgba(122, 162, 247, 0.12);
+}
+
+[data-theme="catppuccin"] {
+  --bg: #181825;
+  --surface: #1e1e2e;
+  --surface-2: #313244;
+  --text: #cdd6f4;
+  --muted: #8b90a8;
+  --gold: #cba6f7;
+  --gold-2: #f5c2e7;
+  --glow: rgba(203, 166, 247, 0.12);
+}
+
+[data-theme="gruvbox"] {
+  --bg: #1d2021;
+  --surface: #282828;
+  --surface-2: #3c3836;
+  --text: #ebdbb2;
+  --muted: #a89984;
+  --gold: #fabd2f;
+  --gold-2: #fe8019;
+  --glow: rgba(250, 189, 47, 0.1);
+}
+
+[data-theme="solarized"] {
+  --bg: #00212b;
+  --surface: #002b36;
+  --surface-2: #073642;
+  --text: #eee8d5;
+  --muted: #93a1a1;
+  --gold: #b58900;
+  --gold-2: #268bd2;
+  --glow: rgba(181, 137, 0, 0.12);
+}
+
+[data-theme="onedark"] {
+  --bg: #21252b;
+  --surface: #282c34;
+  --surface-2: #3a3f4b;
+  --text: #abb2bf;
+  --muted: #7f8697;
+  --gold: #61afef;
+  --gold-2: #c678dd;
+  --glow: rgba(97, 175, 239, 0.12);
+}
+
+[data-theme="rosepine"] {
+  --bg: #191724;
+  --surface: #1f1d2e;
+  --surface-2: #26233a;
+  --text: #e0def4;
+  --muted: #908caa;
+  --gold: #ebbcba;
+  --gold-2: #c4a7e7;
+  --glow: rgba(235, 188, 186, 0.1);
+}
+
+[data-theme="everforest"] {
+  --bg: #272e33;
+  --surface: #2d353b;
+  --surface-2: #343f44;
+  --text: #d3c6aa;
+  --muted: #9da9a0;
+  --gold: #a7c080;
+  --gold-2: #dbbc7f;
+  --glow: rgba(167, 192, 128, 0.1);
+}
+
+body {
+  background:
+    radial-gradient(760px 400px at 50% -20%, var(--glow), transparent 72%),
+    radial-gradient(520px 260px at 100% 0%, rgba(255, 255, 255, 0.03), transparent 70%),
+    var(--bg);
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.theme-card-active {
+  border-color: var(--gold);
+}
+
+.theme-swatches {
+  display: flex;
+  gap: 4px;
+  height: 34px;
+}
+
+.theme-swatch {
+  flex: 1;
+  border-radius: 8px;
+}
+
+.theme-name {
+  font-size: 12px;
+  font-weight: 800;
+}
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rule {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.rule summary {
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rule summary::-webkit-details-marker {
+  display: none;
+}
+
+.rule[open] summary {
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+
+.rule p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.country-pill {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.66);
+  backdrop-filter: blur(4px);
+}
+
+.modal-sheet {
+  width: min(480px, 100%);
+  max-height: 82vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.modal-head h3 {
+  font-size: 17px;
+}
+
+.modal-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.country-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.country-option-active {
+  border-color: var(--gold);
+}
+
+.country-flag {
+  width: 38px;
+  font-size: 11.5px;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.country-title {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.country-example {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}

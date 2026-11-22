@@ -41,12 +41,26 @@ export function ProfileView({
   top: PlateT[];
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
-  onNavigate?: (tab: "shop" | "pass" | "admin") => void;
+  onNavigate?: (tab: "shop" | "pass" | "admin" | "settings") => void;
 }) {
   const [history, setHistory] = useState<Tx[]>([]);
   const [dailyBusy, setDailyBusy] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [buying, setBuying] = useState<string | null>(null);
+  const [promo, setPromo] = useState("");
+
+  async function redeemPromo() {
+    const code = promo.trim();
+    if (!code) return;
+    try {
+      const result = await api.redeemPromo(code);
+      notify(`Промокод ${result.code} активирован`, "ok");
+      setPromo("");
+      await refresh();
+    } catch (error) {
+      notify((error as Error).message, "err");
+    }
+  }
 
   useEffect(() => {
     api
@@ -201,6 +215,27 @@ export function ProfileView({
         </>
       )}
 
+      <div className="card">
+        <div className="section-head">
+          <h3>Промокод</h3>
+        </div>
+        <div className="chips">
+          <input
+            className="chat-input bid-input"
+            value={promo}
+            placeholder="Введи промокод"
+            onChange={(event) => setPromo(event.target.value)}
+          />
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={redeemPromo}
+            disabled={!promo.trim()}
+          >
+            Активировать
+          </button>
+        </div>
+      </div>
+
       <div className="menu-list">
         {(user.is_admin
           ? [...MENU, { key: "admin", title: "Админка", hint: "игроки и выдача" }]
@@ -210,7 +245,10 @@ export function ProfileView({
             className="menu-row"
             key={item.key}
             onClick={() =>
-              item.key === "shop" || item.key === "pass" || item.key === "admin"
+              item.key === "shop" ||
+              item.key === "pass" ||
+              item.key === "admin" ||
+              item.key === "settings"
                 ? onNavigate?.(item.key)
                 : notify("Скоро добавим", "ok")
             }

@@ -40,6 +40,18 @@ export type UserT = {
   pass_premium: boolean;
   vip_until: string | null;
   frame: string;
+  theme: string;
+};
+
+export type ThemeItem = {
+  code: string;
+  title: string;
+  bg: string;
+  surface: string;
+  accent: string;
+  accent2: string;
+  text: string;
+  muted: string;
 };
 
 export type NickT = {
