@@ -32,7 +32,53 @@ MAJOR_REGIONS = {
     "01", "02", "03", "50", "90", "102", "116", "150", "190", "199", "777", "797", "799", "977",
 }
 
-PRESTIGE_LETTERS = {"АМР", "АУЕ", "ЕКХ", "СВР", "МОС"}
+COUNTRIES: dict[str, dict] = {
+    "RU": {
+        "flag": "RUS",
+        "title": "Россия",
+        "regions": REGIONS,
+        "mult": 1.0,
+    },
+    "KZ": {
+        "flag": "KZ",
+        "title": "Казахстан",
+        "regions": [f"{i:02d}" for i in range(1, 21)],
+        "mult": 0.85,
+    },
+    "BY": {
+        "flag": "BY",
+        "title": "Беларусь",
+        "regions": [f"{i:02d}" for i in range(1, 8)],
+        "mult": 0.8,
+    },
+    "UZ": {
+        "flag": "UZ",
+        "title": "Узбекистан",
+        "regions": [f"{i:02d}" for i in range(1, 15)],
+        "mult": 0.75,
+    },
+    "AE": {
+        "flag": "UAE",
+        "title": "ОАЭ",
+        "regions": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"],
+        "mult": 1.5,
+    },
+}
+
+COUNTRY_CODES = tuple(COUNTRIES)
+
+PRESTIGE_LETTERS = {"АМР", "АУЕ", "ЕКХ", "СВР", "МОС", "КАМ"}
+
+SPECIAL_DIGITS: dict[str, tuple[str, int]] = {
+    "007": ("Агент 007", 6),
+    "911": ("Экстренный", 6),
+    "666": ("Дьявольский", 5),
+    "100": ("Сотка", 4),
+    "001": ("Первый", 4),
+    "777": ("Три семёрки", 0),
+    "999": ("Три девятки", 0),
+    "888": ("Три восьмёрки", 0),
+}
 
 TIERS: tuple[str, ...] = ("common", "rare", "epic", "legendary", "mythic")
 
@@ -107,6 +153,7 @@ class PlateValue:
     rarity: str
     stars: int
     factors: tuple[Factor, ...]
+    country: str = "RU"
 
     @property
     def rarity_label(self) -> str:
@@ -142,6 +189,8 @@ def explain(digits: str, letters: str, region: str) -> tuple[Factor, ...]:
 
     if is_triple(d):
         factors.append(Factor("Три одинаковые цифры", 9))
+    elif d in SPECIAL_DIGITS and SPECIAL_DIGITS[d][1]:
+        factors.append(Factor(SPECIAL_DIGITS[d][0], SPECIAL_DIGITS[d][1]))
     elif is_mirror(d):
         factors.append(Factor("Зеркало", 5))
     elif is_pair(d):
@@ -176,6 +225,8 @@ def rarity_of(digits: str, letters: str, region: str) -> str:
         return "mythic"
     if prestige:
         return "legendary"
+    if digits in SPECIAL_DIGITS:
+        return "epic"
     if is_pair(digits) or is_sequence(digits) or is_round(digits):
         return "epic"
     if is_mirror(digits):
@@ -191,16 +242,21 @@ def tier_index(rarity: str) -> int:
     return TIERS.index(rarity)
 
 
-def price_of(total: int, rarity: str) -> int:
-    return TIER_BASE[rarity] + SCORE_STEP[rarity] * total
+def price_of(total: int, rarity: str, country: str = "RU") -> int:
+    base = TIER_BASE[rarity] + SCORE_STEP[rarity] * total
+    mult = COUNTRIES.get(country, COUNTRIES["RU"])["mult"]
+    return max(100, int(round(base * mult / 100) * 100))
 
 
-def build(letters: str, digits: str, region: str) -> PlateValue:
+def build(letters: str, digits: str, region: str, country: str = "RU") -> PlateValue:
     if len(digits) != 3 or not digits.isdigit():
         raise ValueError("digits must be 3 digits")
     if len(letters) != 3 or any(char not in LETTERS for char in letters):
         raise ValueError("letters must be 3 allowed cyrillic letters")
-    if region not in REGIONS:
+    data = COUNTRIES.get(country)
+    if data is None:
+        raise ValueError("unknown country")
+    if region not in data["regions"]:
         raise ValueError("unknown region")
 
     factors = explain(digits, letters, region)
@@ -213,22 +269,30 @@ def build(letters: str, digits: str, region: str) -> PlateValue:
         letters=letters,
         region=region,
         score=total,
-        price=price_of(total, rarity),
+        price=price_of(total, rarity, country),
         rarity=rarity,
         stars=STARS_PRICE[rarity],
         factors=factors,
+        country=country,
     )
 
 
 _CODE_RE = re.compile(r"^([АВЕКМНОРСТУХ])(\d{3})([АВЕКМНОРСТУХ]{2})(\d{2,3})$")
 
 
-def parse_code(code: str) -> PlateValue:
+def country_for_region(region: str) -> str:
+    for code, data in COUNTRIES.items():
+        if region in data["regions"]:
+            return code
+    return "RU"
+
+
+def parse_code(code: str, country: str | None = None) -> PlateValue:
     match = _CODE_RE.match(code.replace(" ", "").upper())
     if not match:
         raise ValueError(f"bad plate code: {code}")
     head, digits, tail, region = match.groups()
-    return build(head + tail, digits, region)
+    return build(head + tail, digits, region, country or country_for_region(region))
 
 
 def _choice(source, rng: random.Random | None):
@@ -300,39 +364,47 @@ def _prestige_letters(rng: random.Random | None) -> str:
     return _choice(sorted(PRESTIGE_LETTERS), rng)
 
 
-def plate_for_tier(tier: str, rng: random.Random | None = None) -> PlateValue:
-    """Возвращает номер ровно запрошенной редкости."""
+def plate_for_tier(
+    tier: str, rng: random.Random | None = None, country: str = "RU"
+) -> PlateValue:
+    """Возвращает номер ровно запрошенной редкости в выбранной стране."""
     if tier not in TIERS:
         raise ValueError(f"unknown tier: {tier}")
 
+    data = COUNTRIES.get(country)
+    if data is None:
+        raise ValueError(f"unknown country: {country}")
+    regions = list(data["regions"])
+    premium = [code for code in regions if code in PREMIUM_REGIONS]
+
     for _ in range(200):
-        if tier == "mythic":
-            if _randint(0, 1, rng):
-                digits = str(_randint(0, 9, rng)) * 3
-                letters = _random_letters(rng, repeat=_randint(0, 1, rng) == 1)
-            else:
-                digits = f"{_randint(0, 999, rng):03d}"
-                letters = _prestige_letters(rng)
-            region = _choice(sorted(PREMIUM_REGIONS), rng)
+        if tier == "mythic" and premium and _randint(0, 1, rng):
+            digits = f"{_randint(0, 999, rng):03d}"
+            letters = _prestige_letters(rng)
+            region = _choice(premium, rng)
+        elif tier == "mythic":
+            digits = str(_randint(0, 9, rng)) * 3
+            letters = _random_letters(rng, repeat=_randint(0, 1, rng) == 1)
+            region = _choice(regions, rng)
         elif tier == "legendary":
             letters = _prestige_letters(rng)
             digits = f"{_randint(0, 999, rng):03d}"
-            region = _random_region(rng)
+            region = _choice(regions, rng)
         elif tier == "epic":
             letters = _random_letters(rng)
             digits = _epic_digits(rng)
-            region = _random_region(rng, biased=True)
+            region = _choice(regions, rng)
         elif tier == "rare":
             letters = _random_letters(rng)
             digits = _mirror_digits(rng)
-            region = _random_region(rng, biased=True)
+            region = _choice(regions, rng)
         else:
             letters = _random_letters(rng)
             digits = f"{_randint(0, 999, rng):03d}"
-            region = _random_region(rng)
+            region = _choice(regions, rng)
 
         try:
-            plate = build(letters, digits, region)
+            plate = build(letters, digits, region, country)
         except ValueError:
             continue
         if plate.rarity == tier:
@@ -351,9 +423,11 @@ def value_multiplier(rng: random.Random | None = None) -> float:
     return 1.05 + ((roll - 0.85) / 0.15) * 0.15
 
 
-def spin_plate(tier: str, rng: random.Random | None = None) -> PlateValue:
+def spin_plate(
+    tier: str, rng: random.Random | None = None, country: str = "RU"
+) -> PlateValue:
     """Номер выбранной редкости с ценой, скорректированной под ставку."""
-    plate = plate_for_tier(tier, rng)
+    plate = plate_for_tier(tier, rng, country)
     multiplier = value_multiplier(rng)
     price = max(100, int(round(plate.price * multiplier / 100) * 100))
     return replace(plate, price=price)

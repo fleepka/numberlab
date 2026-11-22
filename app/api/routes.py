@@ -37,7 +37,7 @@ from app.passes import PREMIUM_STARS
 from app.passes import claim as claim_pass
 from app.passes import unlock as unlock_pass
 from app.passes import view as pass_view
-from app.plates import ENERGY_COST, STAKES
+from app.plates import COUNTRIES, ENERGY_COST, STAKES
 from app.tg import stars_invoice
 from app.style import buy as buy_frame
 from app.store import PRODUCTS
@@ -66,17 +66,23 @@ async def me(user: User = Depends(current_user), session: AsyncSession = Depends
         "top": [plate_json(p) for p in top],
         "stakes": STAKES,
         "energy_costs": ENERGY_COST,
+        "countries": [
+            {"code": code, "title": data["title"], "flag": data["flag"]}
+            for code, data in COUNTRIES.items()
+        ],
     }
 
 
 @router.post("/spin")
 async def do_spin(
     tier: str | None = None,
+    currency: str | None = None,
+    country: str = "RU",
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     try:
-        plate, cost, used_tier = await spin(session, user.id, tier)
+        plate, cost, used_tier = await spin(session, user.id, tier, currency, country)
         await session.commit()
     except GameError as error:
         await session.rollback()

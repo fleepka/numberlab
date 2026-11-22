@@ -34,6 +34,7 @@ async def insert_plate(
                     price=value.price,
                     rarity=value.rarity,
                     stars=value.stars,
+                    country=value.country,
                     owner_id=owner_id,
                     is_paid=is_paid,
                     source=source,

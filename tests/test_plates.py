@@ -1,4 +1,5 @@
 from app.plates import (
+    COUNTRIES,
     SCORE_STEP,
     STAKES,
     TIER_BASE,
@@ -55,10 +56,40 @@ def test_premium_region_adds_value():
 
 def test_price_formula_matches_tier():
     plate = build("АВС", SEQ, "50")
-    assert plate.price == TIER_BASE[plate.rarity] + SCORE_STEP[plate.rarity] * plate.score
+    raw = TIER_BASE[plate.rarity] + SCORE_STEP[plate.rarity] * plate.score
+    assert plate.price == round(raw / 100) * 100
 
 
-def test_parse_code_roundtrip():
+def test_special_numbers_are_epic():
+    assert rarity_of("007", "АВС", "50") == "epic"
+    assert rarity_of("911", "АВС", "50") == "epic"
+    plate = build("АВС", "007", "50")
+    assert any(factor.title == "Агент 007" for factor in plate.factors)
+
+
+def test_country_changes_price_and_keeps_code():
+    ru = build("АВС", PLAIN, "01", "RU")
+    kz = build("АВС", PLAIN, "01", "KZ")
+    assert ru.country == "RU"
+    assert kz.country == "KZ"
+    assert kz.price < ru.price
+    assert kz.code == ru.code
+
+
+def test_generated_plate_uses_country_regions():
+    plate = plate_for_tier("epic", country="AE")
+    assert plate.country == "AE"
+    assert plate.region in COUNTRIES["AE"]["regions"]
+
+
+def test_parse_code_with_country():
+    plate = build("АВС", PLAIN, "14", "UZ")
+    parsed = parse_code(plate.code, "UZ")
+    assert parsed.country == "UZ"
+    assert parsed.price == plate.price
+
+
+
     for code in ("А777АА77", "В121ОР199", "К001МН750"):
         assert parse_code(code).code == code
 
@@ -66,7 +97,8 @@ def test_parse_code_roundtrip():
 def test_generated_plate_is_consistent():
     for _ in range(80):
         plate = pretty_plate()
-        assert plate.price == TIER_BASE[plate.rarity] + SCORE_STEP[plate.rarity] * plate.score
+        raw = TIER_BASE[plate.rarity] + SCORE_STEP[plate.rarity] * plate.score
+        assert plate.price == round(raw / 100) * 100
         assert plate.stars >= 1
         assert parse_code(plate.code) == plate
 

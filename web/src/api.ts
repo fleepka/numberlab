@@ -1,4 +1,6 @@
 import type {
+  AdminMeta,
+  AdminUser,
   AuctionData,
   ChatMessage,
   CollectionT,
@@ -67,15 +69,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   me: () => request<MeResponse>("/api/me"),
-  spin: (tier?: string) =>
-    request<{
+  spin: (tier?: string, currency?: "energy" | "rubles", country?: string) => {
+    const params = new URLSearchParams();
+    if (tier) params.set("tier", tier);
+    if (currency) params.set("currency", currency);
+    if (country) params.set("country", country);
+    const query = params.toString();
+    return request<{
       plate: PlateT;
       cost: number;
       tier: string;
       coins: number;
       energy: number;
       energy_in: number;
-    }>(tier ? `/api/spin?tier=${tier}` : "/api/spin", { method: "POST" }),
+    }>(query ? `/api/spin?${query}` : "/api/spin", { method: "POST" });
+  },
   daily: () =>
     request<{ amount: number; coins: number; streak: number }>("/api/daily", { method: "POST" }),
   garage: () => request<GarageData>("/api/garage"),
@@ -167,11 +175,6 @@ export const api = {
   cancelDuel: (id: number) =>
     request<{ ok: boolean; coins: number }>(`/api/duels/${id}/cancel`, { method: "POST" }),
   shop: () => request<ShopData>("/api/shop"),
-  buyEnergy: (pack: string) =>
-    request<{ energy: number; coins: number; added: number }>("/api/shop/energy", {
-      method: "POST",
-      body: JSON.stringify({ pack }),
-    }),
   buyTicket: (rarity: string) =>
     request<{ coins: number; rarity: string }>("/api/shop/ticket", {
       method: "POST",
@@ -184,7 +187,26 @@ export const api = {
       body: JSON.stringify({ code }),
     }),
   auction: () => request<AuctionData>("/api/auction"),
-  bidAuction: (amount: number) =>
+  adminMeta: () => request<AdminMeta>("/api/admin/meta"),
+  adminUsers: (q = "") =>
+    request<{ items: AdminUser[] }>(`/api/admin/users?q=${encodeURIComponent(q)}`),
+  adminUser: (id: number) => request<AdminUser>(`/api/admin/users/${id}`),
+  adminGrant: (user_id: number, currency: string, amount: number) =>
+    request<{ coins?: number; gems?: number; energy?: number }>("/api/admin/grant", {
+      method: "POST",
+      body: JSON.stringify({ user_id, currency, amount }),
+    }),
+  adminPlate: (user_id: number, rarity: string, country: string) =>
+    request<{ plate: PlateT }>("/api/admin/plate", {
+      method: "POST",
+      body: JSON.stringify({ user_id, rarity, country }),
+    }),
+  adminBan: (user_id: number, banned: boolean) =>
+    request<{ is_banned: boolean }>("/api/admin/ban", {
+      method: "POST",
+      body: JSON.stringify({ user_id, banned }),
+    }),
+  adminCleanup: () => request<{ removed: number }>("/api/admin/cleanup", { method: "POST" }),  bidAuction: (amount: number) =>
     request<{ top_bid: number; coins: number; ends_at: string }>("/api/auction/bid", {
       method: "POST",
       body: JSON.stringify({ amount }),

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, tg } from "./api";
+import { AdminView } from "./components/Admin";
 import { ChatView } from "./components/Chat";
 import { CollectionsView } from "./components/Collections";
 import { DuelsView } from "./components/Duels";
@@ -27,6 +28,7 @@ type Tab =
   | "tickets"
   | "pass"
   | "chat"
+  | "admin"
   | "profile";
 
 const NAV: { id: Tab; label: string }[] = [
@@ -57,6 +59,7 @@ const ICONS: Record<Tab, string> = {
   tickets: "M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4zM9 6v8",
   pass: "M5 4h14v16H5zM9 9h6M9 13h6M9 17h3",
   chat: "M4 6h16v10H9l-5 4V6z",
+  admin: "M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4zM9 12l2 2 4-4",
   profile: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
 };
 
@@ -165,6 +168,7 @@ export default function App() {
             user={me.user}
             stakes={me.stakes}
             energyCosts={me.energy_costs}
+            countries={me.countries}
             refresh={refresh}
             notify={notify}
             onNavigate={(next) => setTab(next)}
@@ -180,6 +184,7 @@ export default function App() {
         {tab === "tickets" && <TicketsView refresh={refresh} notify={notify} />}
         {tab === "pass" && <PassView refresh={refresh} notify={notify} />}
         {tab === "chat" && <ChatView selfId={me.user.id} notify={notify} />}
+        {tab === "admin" && me.user.is_admin && <AdminView notify={notify} />}
         {tab === "rating" && <RatingView selfId={me.user.id} notify={notify} />}
         {tab === "friends" && <FriendsView selfId={me.user.id} notify={notify} />}
         {tab === "profile" && (

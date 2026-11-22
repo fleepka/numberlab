@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, tg } from "../api";
 import { daysLeftInMonth, money } from "../format";
 import { formatTime, rarityColor, rarityLabel } from "../rarity";
-import type { PlateT, UserT } from "../types";
+import type { Country, PlateT, UserT } from "../types";
 import { Plate } from "./Plate";
 
 const LETTERS = "АВЕКМНОРСТУХ";
@@ -33,6 +33,7 @@ export function SpinView({
   user,
   stakes,
   energyCosts,
+  countries,
   refresh,
   notify,
   onNavigate,
@@ -40,12 +41,15 @@ export function SpinView({
   user: UserT;
   stakes: Record<string, number>;
   energyCosts: Record<string, number>;
+  countries: Country[];
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
   onNavigate?: (tab: NextTab) => void;
 }) {
   const [rolling, setRolling] = useState(false);
   const [stake, setStake] = useState("common");
+  const [currency, setCurrency] = useState<"energy" | "rubles">("energy");
+  const [country, setCountry] = useState("RU");
   const [preview, setPreview] = useState(previewCode);
   const [result, setResult] = useState<PlateT | null>(null);
   const [selling, setSelling] = useState(false);
@@ -73,13 +77,18 @@ export function SpinView({
   }, []);
 
   const need = energyCosts[stake] ?? 1;
-  const free = user.energy >= need;
-  const cost = free ? 0 : stakes[stake] ?? 0;
+  const price = stakes[stake] ?? 0;
+  const canEnergy = user.energy >= need;
+  const canRubles = user.coins >= price;
+  const can = currency === "energy" ? canEnergy : canRubles;
 
   async function roll() {
     if (rolling) return;
-    if (!free && user.coins < cost) {
-      notify(`Нужно ${need} ⚡ или ${money(cost)}`, "err");
+    if (!can) {
+      notify(
+        currency === "energy" ? `Нужно ${need} ⚡` : `Нужно ${money(price)}`,
+        "err",
+      );
       return;
     }
 
@@ -89,7 +98,7 @@ export function SpinView({
     const started = Date.now();
 
     try {
-      const response = await api.spin(stake);
+      const response = await api.spin(stake, currency, country);
       const wait = Math.max(0, 900 - (Date.now() - started));
       await new Promise((resolve) => setTimeout(resolve, wait));
       setPreview(response.plate.code);
@@ -134,13 +143,32 @@ export function SpinView({
     <section className="view">
       <div className="season-row">
         <span className="season-pill">🏆 Сезон 1 · ещё {daysLeftInMonth()} д</span>
-        <span className="country-pill">🇷🇺 RUS</span>
+        <span className="country-pill">
+          {countries.find((item) => item.code === country)?.flag ?? "RUS"}
+        </span>
+      </div>
+
+      <div className="chips">
+        {countries.map((item) => (
+          <button
+            key={item.code}
+            className={country === item.code ? "chip chip-active" : "chip"}
+            onClick={() => setCountry(item.code)}
+          >
+            {item.flag} · {item.title}
+          </button>
+        ))}
       </div>
 
       <div className="stage">
         <div className="stage-glow" style={{ background: color }} />
         <div className={rolling ? "reel reel-spinning" : "reel"}>
-          <Plate code={rolling ? preview : result?.code ?? preview} size="lg" glow={rolling ? undefined : color} />
+          <Plate
+            code={rolling ? preview : result?.code ?? preview}
+            size="lg"
+            country={result?.country ?? country}
+            glow={rolling ? undefined : color}
+          />
         </div>
 
         {result ? (
@@ -185,23 +213,42 @@ export function SpinView({
       <div className="stake-block">
         <div className="stake-head">
           <span className="muted small">Что крутим</span>
-          <span className="muted small">⚡ или ₽ — на выбор цена спишет то, чего хватает</span>
+          <span className="muted small">{rarityLabel(stake)}</span>
         </div>
         <div className="chips">
-          {Object.entries(stakes).map(([tier, price]) => (
+          {Object.entries(stakes).map(([tier, tierPrice]) => (
             <button
               key={tier}
               className={stake === tier ? "chip chip-active" : "chip"}
               onClick={() => setStake(tier)}
             >
-              {rarityLabel(tier)} · ⚡{energyCosts[tier] ?? 1} / {money(price)}
+              {rarityLabel(tier)} · ⚡{energyCosts[tier] ?? 1} / {money(tierPrice)}
             </button>
           ))}
         </div>
       </div>
 
+      <div className="segmented">
+        <button
+          className={currency === "energy" ? "segment segment-active" : "segment"}
+          onClick={() => setCurrency("energy")}
+        >
+          ⚡ Энергия · {need}
+        </button>
+        <button
+          className={currency === "rubles" ? "segment segment-active" : "segment"}
+          onClick={() => setCurrency("rubles")}
+        >
+          ₽ Рубли · {money(price)}
+        </button>
+      </div>
+
       <button className="btn btn-primary btn-lg" onClick={roll} disabled={rolling}>
-        {rolling ? "Крутим…" : free ? `Крутить · ⚡${need}` : `Крутить · ${money(cost)}`}
+        {rolling
+          ? "Крутим…"
+          : currency === "energy"
+            ? `Крутить · ⚡${need}`
+            : `Крутить · ${money(price)}`}
       </button>
 
       <div className="energy-line">

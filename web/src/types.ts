@@ -5,6 +5,7 @@ export type PlateT = {
   code: string;
   rarity: string;
   rarity_label?: string;
+  country?: string;
   score: number;
   price: number;
   stars: number;
@@ -47,6 +48,32 @@ export type NickT = {
   claimed7: boolean;
   claimed14: boolean;
   next: number | null;
+};
+
+export type AdminUser = {
+  id: number;
+  tg_id: number;
+  name: string;
+  username: string | null;
+  coins: number;
+  gems: number;
+  energy: number;
+  level: number;
+  spins: number;
+  invites: number;
+  is_banned: boolean;
+  is_admin: boolean;
+  garage_slots: number;
+  vip_until: string | null;
+  created_at: string | null;
+  garage_count?: number;
+  garage_value?: number;
+  history?: { delta: number; currency: string; reason: string; created_at: string | null }[];
+};
+
+export type AdminMeta = {
+  rarities: { code: string; label: string }[];
+  countries: { code: string; title: string; flag: string }[];
 };
 
 export type ChatMessage = {
@@ -116,12 +143,19 @@ export type GarageData = {
   slots: number;
 };
 
+export type Country = {
+  code: string;
+  title: string;
+  flag: string;
+};
+
 export type MeResponse = {
   user: UserT;
   garage_count: number;
   top: PlateT[];
   stakes: Record<string, number>;
   energy_costs: Record<string, number>;
+  countries: Country[];
 };
 
 export type DuelT = {
@@ -180,10 +214,7 @@ export type AuctionData = {
 
 export type ShopData = {
   offers: Offer[];
-  energy_packs: EnergyPack[];
   ticket_prices: Record<string, number>;
-  vip_price: number;
-  vip_until: string | null;
   frames: { code: string; title: string; price: number; color: string }[];
 };
 

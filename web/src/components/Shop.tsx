@@ -5,11 +5,10 @@ import { rarityColor, rarityLabel } from "../rarity";
 import type { AuctionData, Offer, ShopData } from "../types";
 import { Plate } from "./Plate";
 
-type Tab = "numbers" | "energy" | "tickets" | "auction" | "style";
+type Tab = "numbers" | "tickets" | "auction" | "style";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "numbers", label: "Номера" },
-  { id: "energy", label: "Энергия" },
   { id: "tickets", label: "Билеты" },
   { id: "auction", label: "Аукцион" },
   { id: "style", label: "Стиль" },
@@ -101,20 +100,6 @@ export function ShopView({
     }
   }
 
-  async function buyEnergy(pack: string, energy: number) {
-    if (busy) return;
-    setBusy(pack);
-    try {
-      await api.buyEnergy(pack);
-      notify(`Энергия +${energy}`, "ok");
-      await refresh();
-    } catch (error) {
-      notify((error as Error).message, "err");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function buyTicket(rarity: string) {
     if (busy) return;
     setBusy(rarity);
@@ -193,24 +178,6 @@ export function ShopView({
             Номера за звёзды остаются в коллекции навсегда и не продаются за игровые рубли.
           </p>
         </>
-      )}
-
-      {tab === "energy" && (
-        <div className="shop-grid">
-          {data.energy_packs.map((pack) => (
-            <article className="card shop-card" key={pack.code}>
-              <span className="pack-value">⚡ {pack.energy}</span>
-              <span className="price">{money(pack.price)}</span>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => buyEnergy(pack.code, pack.energy)}
-                disabled={busy === pack.code}
-              >
-                {busy === pack.code ? "…" : "Купить"}
-              </button>
-            </article>
-          ))}
-        </div>
       )}
 
       {tab === "auction" && (

@@ -8,6 +8,10 @@ FRAMES = {
     "neon": {"title": "Неон", "price": 99, "color": "#35e0c0"},
     "gold": {"title": "Золото", "price": 149, "color": "#ffc247"},
     "ice": {"title": "Лёд", "price": 129, "color": "#6c8cff"},
+    "violet": {"title": "Фиолет", "price": 119, "color": "#b07cff"},
+    "rose": {"title": "Роза", "price": 139, "color": "#ff6b9d"},
+    "matrix": {"title": "Матрица", "price": 179, "color": "#4ade80"},
+    "ember": {"title": "Уголь", "price": 199, "color": "#ff7a45"},
 }
 
 

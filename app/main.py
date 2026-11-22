@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api.admin import router as admin_router
 from app.api.duels import router as duels_router
 from app.api.routes import router as routes_router
 from app.api.shop import router as shop_router
@@ -54,6 +55,7 @@ app.add_middleware(
 app.include_router(routes_router)
 app.include_router(duels_router)
 app.include_router(shop_router)
+app.include_router(admin_router)
 
 
 @app.middleware("http")

@@ -49,6 +49,9 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
     "tasks": [
         ("reward_ticket", "VARCHAR(16) NOT NULL DEFAULT ''"),
     ],
+    "plates": [
+        ("country", "VARCHAR(4) NOT NULL DEFAULT 'RU'"),
+    ],
 }
 
 

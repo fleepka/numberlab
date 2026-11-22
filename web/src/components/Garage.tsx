@@ -167,7 +167,7 @@ export function GarageView({
       </div>
 
       <div className="garage-best" onClick={() => toggle(best)}>
-        <Plate code={best.code} size="sm" glow={rarityColor(best.rarity)} />
+        <Plate code={best.code} size="sm" country={best.country} glow={rarityColor(best.rarity)} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="muted small">Лучший номер</div>
           <div className="garage-best-code" style={{ color: rarityColor(best.rarity) }}>
@@ -208,7 +208,7 @@ export function GarageView({
               onClick={() => toggle(plate)}
             >
               <span className={active ? "pick pick-active" : "pick"}>{active ? "✓" : ""}</span>
-              <Plate code={plate.code} size="sm" glow={rarityColor(plate.rarity)} />
+              <Plate code={plate.code} size="sm" country={plate.country} glow={rarityColor(plate.rarity)} />
               <span className="plate-price" style={{ color: rarityColor(plate.rarity) }}>
                 {money(plate.price)}
               </span>

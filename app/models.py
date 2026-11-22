@@ -72,6 +72,7 @@ class Plate(Base):
     score: Mapped[int] = mapped_column(Integer, default=0)
     price: Mapped[int] = mapped_column(Integer, default=0)
     rarity: Mapped[str] = mapped_column(String(24), default="Обычный")
+    country: Mapped[str] = mapped_column(String(4), default="RU")
     stars: Mapped[int] = mapped_column(Integer, default=1)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)

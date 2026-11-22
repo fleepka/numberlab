@@ -19,32 +19,11 @@ class ShopError(Exception):
 
 SHOP_SIZE = 9
 
-ENERGY_PACKS = {
-    "small": {"energy": 10, "price": 5000, "title": "Пакет энергии"},
-    "big": {"energy": 30, "price": 12000, "title": "Большой пакет энергии"},
-}
-
 TICKET_PRICES = {
     "rare": 15000,
     "epic": 60000,
     "legendary": 250000,
 }
-
-
-async def buy_energy(session: AsyncSession, user_id: int, pack: str) -> dict:
-    from app.economy import GameError, apply_delta, lock_user
-    from app.energy import add as add_energy
-
-    item = ENERGY_PACKS.get(pack)
-    if item is None:
-        raise GameError("такого пакета нет")
-
-    user = await lock_user(session, user_id)
-    if user.coins < item["price"]:
-        raise GameError("не хватает рублей")
-    await apply_delta(session, user, -item["price"], "shop_energy", ref=pack)
-    add_energy(user, item["energy"])
-    return {"energy": user.energy, "coins": user.coins, "added": item["energy"]}
 
 
 async def buy_ticket(session: AsyncSession, user_id: int, rarity: str) -> dict:

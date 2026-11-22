@@ -58,7 +58,11 @@ async def create_unique_plate(
 
 
 async def spin(
-    session: AsyncSession, user_id: int, stake: str | None = None
+    session: AsyncSession,
+    user_id: int,
+    stake: str | None = None,
+    currency: str | None = None,
+    country: str = "RU",
 ) -> tuple[Plate, int, str]:
     user = await lock_user(session, user_id)
     if user.is_banned:
@@ -68,16 +72,32 @@ async def spin(
     await ensure_space(session, user.id, user.garage_slots)
     tier = stake if stake in STAKES else "common"
     need = ENERGY_COST[tier]
-    if user.energy >= need:
+    price = STAKES[tier]
+
+    can_energy = user.energy >= need
+    can_rubles = user.coins >= price
+
+    if currency == "energy":
+        if not can_energy:
+            raise GameError(f"нужно {need} ⚡")
+        pay_energy = True
+    elif currency == "rubles":
+        if not can_rubles:
+            raise GameError(f"нужно {price} ₽")
+        pay_energy = False
+    else:
+        pay_energy = can_energy
+        if not can_energy and not can_rubles:
+            raise GameError(f"нужно {need} ⚡ или {price} ₽ на такую прокрутку")
+
+    if pay_energy:
         user.energy -= need
         cost = 0
-        factory = lambda: plate_for_tier(tier)  # noqa: E731
+        factory = lambda: plate_for_tier(tier, country=country)  # noqa: E731
     else:
-        cost = STAKES[tier]
-        if user.coins < cost:
-            raise GameError(f"нужно {need} ⚡ или {cost} ₽ на такую прокрутку")
-        await apply_delta(session, user, -cost, "spin", ref=tier)
-        factory = lambda: spin_plate(tier)  # noqa: E731
+        await apply_delta(session, user, -price, "spin", ref=tier)
+        cost = price
+        factory = lambda: spin_plate(tier, country=country)  # noqa: E731
     plate = await create_unique_plate(session, user.id, source="spin", factory=factory)
 
     user.spins += 1

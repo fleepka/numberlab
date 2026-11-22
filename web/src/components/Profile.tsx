@@ -41,7 +41,7 @@ export function ProfileView({
   top: PlateT[];
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
-  onNavigate?: (tab: "shop" | "pass") => void;
+  onNavigate?: (tab: "shop" | "pass" | "admin") => void;
 }) {
   const [history, setHistory] = useState<Tx[]>([]);
   const [dailyBusy, setDailyBusy] = useState(false);
@@ -202,12 +202,15 @@ export function ProfileView({
       )}
 
       <div className="menu-list">
-        {MENU.map((item) => (
+        {(user.is_admin
+          ? [...MENU, { key: "admin", title: "Админка", hint: "игроки и выдача" }]
+          : MENU
+        ).map((item) => (
           <button
             className="menu-row"
             key={item.key}
             onClick={() =>
-              item.key === "shop" || item.key === "pass"
+              item.key === "shop" || item.key === "pass" || item.key === "admin"
                 ? onNavigate?.(item.key)
                 : notify("Скоро добавим", "ok")
             }

@@ -65,6 +65,12 @@ async def test_rare_spin_costs_energy_and_returns_rare(client):
     assert body["plate"]["rarity"] == "rare"
 
 
+async def test_spin_returns_selected_country(client):
+    response = await client.post("/api/spin?tier=rare&country=KZ", headers=headers("1120"))
+    assert response.status_code == 200, response.text
+    assert response.json()["plate"]["country"] == "KZ"
+
+
 async def test_paid_spin_needs_enough_money(client):
     await get_me(client, "1102")
     async with SessionLocal() as session:
@@ -393,20 +399,34 @@ async def test_nick_ticket_after_seven_days(client):
     assert early.status_code == 400
 
 
-async def test_shop_sells_energy_for_rubles(client):
+async def test_spin_currency_energy_requires_energy(client):
     await get_me(client, "2300")
     async with SessionLocal() as session:
         user = await session.scalar(select(User).where(User.tg_id == 2300))
-        user.coins = 6000
         user.energy = 0
+        user.coins = 100_000
         await session.commit()
 
     response = await client.post(
-        "/api/shop/energy", headers=headers("2300"), json={"pack": "small"}
+        "/api/spin?tier=common&currency=energy", headers=headers("2300")
+    )
+    assert response.status_code == 400
+
+
+async def test_spin_currency_rubles_keeps_energy(client):
+    await get_me(client, "2320")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2320))
+        user.coins = 5000
+        await session.commit()
+
+    response = await client.post(
+        "/api/spin?tier=common&currency=rubles", headers=headers("2320")
     )
     assert response.status_code == 200, response.text
-    assert response.json()["energy"] == 10
-    assert response.json()["coins"] == 1000
+    body = response.json()
+    assert body["cost"] == 2000
+    assert body["energy"] == ENERGY_MAX
 
 
 async def test_shop_sells_ticket_for_rubles(client):
@@ -425,14 +445,6 @@ async def test_shop_sells_ticket_for_rubles(client):
     listing = (await client.get("/api/tickets", headers=headers("2310"))).json()
     counts = {item["rarity"]: item["count"] for item in listing["items"]}
     assert counts["rare"] == 1
-
-
-async def test_shop_rejects_expensive_purchase(client):
-    await get_me(client, "2320")
-    response = await client.post(
-        "/api/shop/energy", headers=headers("2320"), json={"pack": "big"}
-    )
-    assert response.status_code == 400
 
 
 async def test_friends_lists_invited_and_contest(client):
@@ -556,6 +568,81 @@ async def test_buy_frame(client):
 
     again = await client.post("/api/style/buy", headers=headers("2700"), json={"frame": "neon"})
     assert again.status_code == 400
+
+
+async def test_admin_requires_flag(client):
+    await get_me(client, "3000")
+    response = await client.get("/api/admin/users", headers=headers("3000"))
+    assert response.status_code == 403
+
+
+async def test_admin_grant_plate_ban_and_cleanup(client):
+    await get_me(client, "3010")
+    async with SessionLocal() as session:
+        admin = await session.scalar(select(User).where(User.tg_id == 3010))
+        admin.is_admin = True
+        await session.commit()
+
+    target = (await get_me(client, "3011"))["user"]
+
+    granted = await client.post(
+        "/api/admin/grant",
+        headers=headers("3010"),
+        json={"user_id": target["id"], "currency": "coins", "amount": 5000},
+    )
+    assert granted.status_code == 200, granted.text
+    assert (await get_me(client, "3011"))["user"]["coins"] == 6500
+
+    plate = await client.post(
+        "/api/admin/plate",
+        headers=headers("3010"),
+        json={"user_id": target["id"], "rarity": "mythic", "country": "KZ"},
+    )
+    assert plate.status_code == 200, plate.text
+    assert plate.json()["plate"]["rarity"] == "mythic"
+    assert plate.json()["plate"]["country"] == "KZ"
+
+    banned = await client.post(
+        "/api/admin/ban", headers=headers("3010"), json={"user_id": target["id"], "banned": True}
+    )
+    assert banned.status_code == 200
+    assert (await client.get("/api/me", headers=headers("3011"))).status_code == 403
+
+    async with SessionLocal() as session:
+        session.add(
+            Plate(
+                code="Я999ЯЯ50",
+                digits="999",
+                letters="ЯВС",
+                region="50",
+                score=9,
+                price=1000,
+                rarity="unique",
+                stars=1,
+            )
+        )
+        await session.commit()
+
+    cleaned = await client.post("/api/admin/cleanup", headers=headers("3010"))
+    assert cleaned.status_code == 200
+    assert cleaned.json()["removed"] >= 1
+
+
+async def test_cosmetics_catalog_has_frames_and_buys(client):
+    await get_me(client, "2620")
+
+    items = (await client.get("/api/products", headers=headers("2620"))).json()["items"]
+    styles = [item for item in items if item["kind"] == "style"]
+    assert len(styles) >= 5
+    assert all(item["stars"] > 0 for item in styles)
+
+    bought = await client.post(
+        "/api/products/buy", headers=headers("2620"), json={"code": "style:rose"}
+    )
+    assert bought.status_code == 200, bought.text
+
+    me = await get_me(client, "2620")
+    assert me["user"]["frame"] == "rose"
 
 
 async def test_daily_once_per_day(client):

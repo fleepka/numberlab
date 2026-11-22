@@ -18,6 +18,7 @@ def plate_json(plate: Plate) -> dict:
         "code": plate.code,
         "rarity": plate.rarity,
         "rarity_label": RARITY_LABELS.get(plate.rarity, plate.rarity),
+        "country": plate.country,
         "score": plate.score,
         "price": plate.price,
         "stars": plate.stars,

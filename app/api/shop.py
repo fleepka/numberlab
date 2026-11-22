@@ -13,10 +13,8 @@ from app.config import settings
 from app.db import get_session
 from app.models import Plate, User
 from app.shop import (
-    ENERGY_PACKS,
     TICKET_PRICES,
     ShopError,
-    buy_energy,
     buy_ticket,
     fulfil_purchase,
     offers_for,
@@ -55,33 +53,12 @@ async def shop(
             for v in values
             if v.code not in taken
         ],
-        "energy_packs": [
-            {"code": code, "energy": item["energy"], "price": item["price"]}
-            for code, item in ENERGY_PACKS.items()
-        ],
         "ticket_prices": TICKET_PRICES,
         "frames": [
             {"code": code, "title": item["title"], "price": item["price"], "color": item["color"]}
             for code, item in FRAMES.items()
         ],
     }
-
-
-@router.post("/energy")
-async def buy_energy_view(
-    body: dict,
-    user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_session),
-) -> dict:
-    from app.economy import GameError
-
-    try:
-        result = await buy_energy(session, user.id, str(body.get("pack", "")))
-        await session.commit()
-    except GameError as error:
-        await session.rollback()
-        raise HTTPException(status_code=400, detail=str(error)) from None
-    return result
 
 
 @router.post("/ticket")
