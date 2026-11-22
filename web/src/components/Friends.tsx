@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, tg } from "../api";
+import { money } from "../format";
 import type { FriendsData, RatingData } from "../types";
 
 function nameOf(item: { username: string | null; first_name: string | null }): string {
@@ -61,7 +62,7 @@ export function FriendsView({
               <div className="ladder-need">{step.need}</div>
               <div className="muted small">{step.need === 1 ? "друг" : "друзей"}</div>
               <div className="ladder-reward">
-                {step.coins > 0 && <span>{step.coins} М</span>}
+                {step.coins > 0 && <span>{money(step.coins)}</span>}
                 {step.energy > 0 && <span className="energy-text">⚡{step.energy}</span>}
                 {step.gems > 0 && <span className="gems-text">◆{step.gems}</span>}
               </div>
@@ -97,7 +98,7 @@ export function FriendsView({
               <div>{nameOf(item)}</div>
               <div className="muted small">{item.plates} номеров</div>
             </div>
-            <span className="price">{item.total.toLocaleString("ru-RU")} М</span>
+            <span className="price">{money(item.total)}</span>
           </article>
         ))}
         {!top.length && <div className="card muted small">Пока пусто</div>}

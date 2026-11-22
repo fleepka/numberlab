@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { money } from "../format";
 import { rarityColor } from "../rarity";
 import type { DuelT, JoinResult } from "../types";
 import { Plate } from "./Plate";
@@ -48,7 +49,7 @@ export function DuelsView({
   async function create() {
     if (busy) return;
     if (coins < bet) {
-      notify("Не хватает монет на ставку", "err");
+      notify("Не хватает денег на ставку", "err");
       return;
     }
     setBusy(true);
@@ -66,7 +67,7 @@ export function DuelsView({
   async function join(duel: DuelT) {
     if (busy) return;
     if (coins < duel.bet) {
-      notify("Не хватает монет на эту дуэль", "err");
+      notify("Не хватает денег на эту дуэль", "err");
       return;
     }
     setBusy(true);
@@ -113,8 +114,8 @@ export function DuelsView({
             <Plate code={result.plates[1].code} size="sm" glow={rarityColor(result.plates[1].rarity)} />
           </div>
           <div className="duel-prices">
-            <span>{result.plates[0].price.toLocaleString("ru-RU")}</span>
-            <span>{result.plates[1].price.toLocaleString("ru-RU")}</span>
+            <span>{money(result.plates[0].price)}</span>
+            <span>{money(result.plates[1].price)}</span>
           </div>
         </div>
       )}
@@ -133,7 +134,7 @@ export function DuelsView({
           ))}
         </div>
         <button className="btn btn-primary" onClick={create} disabled={busy}>
-          Поставить {bet} монет
+          Поставить {money(bet)}
         </button>
       </div>
 

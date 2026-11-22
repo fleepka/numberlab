@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { money } from "../format";
 import type { TaskT, UserT } from "../types";
 
 type Kind = "daily" | "weekly" | "once";
@@ -89,7 +90,7 @@ export function TasksView({
     try {
       const result = await api.claimTask(task.code);
       const parts: string[] = [];
-      if (result.rewards.coins) parts.push(`+${result.rewards.coins} монет`);
+      if (result.rewards.coins) parts.push(`+${money(result.rewards.coins)}`);
       if (result.rewards.energy) parts.push(`+${result.rewards.energy} энергии`);
       if (result.rewards.gems) parts.push(`+${result.rewards.gems} GEMS`);
       notify(`${task.title}: ${parts.join(", ") || "награда получена"}`, "ok");

@@ -108,6 +108,7 @@ export type RatingItem = {
 };
 
 export type RatingData = {
+  period?: string;
   items: RatingItem[];
   me: { rank: number; total: number; plates: number };
 };

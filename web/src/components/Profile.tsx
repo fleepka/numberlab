@@ -14,6 +14,15 @@ const REASONS: Record<string, string> = {
   duel_refund: "возврат ставки",
 };
 
+const MENU = [
+  { key: "pass", title: "Сезонный пропуск", hint: "" },
+  { key: "shop", title: "Магазин", hint: "номера и награды" },
+  { key: "promo", title: "Промокод", hint: "ввести код" },
+  { key: "settings", title: "Настройки", hint: "профиль и уведомления" },
+  { key: "rules", title: "Правила игры", hint: "" },
+  { key: "support", title: "Поддержка", hint: "" },
+] as const;
+
 function signed(value: number, currency: string): string {
   const mark = currency === "gems" ? " ◆" : "";
   return `${value > 0 ? "+" : ""}${value.toLocaleString("ru-RU")}${mark}`;
@@ -25,12 +34,14 @@ export function ProfileView({
   top,
   refresh,
   notify,
+  onNavigate,
 }: {
   user: UserT;
   garageCount: number;
   top: PlateT[];
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
+  onNavigate?: (tab: "shop") => void;
 }) {
   const [history, setHistory] = useState<Tx[]>([]);
   const [dailyBusy, setDailyBusy] = useState(false);
@@ -48,7 +59,7 @@ export function ProfileView({
     setDailyBusy(true);
     try {
       const response = await api.daily();
-      notify(`Награда: +${response.amount} монет, серия ${response.streak}`, "ok");
+      notify(`Награда: +${response.amount} ₽, серия ${response.streak}`, "ok");
       await refresh();
     } catch (error) {
       notify((error as Error).message, "err");
@@ -93,7 +104,7 @@ export function ProfileView({
       <div className="stat-grid">
         <div className="stat">
           <span className="stat-value">{user.coins.toLocaleString("ru-RU")}</span>
-          <span className="stat-label">монет</span>
+          <span className="stat-label">₽</span>
         </div>
         <div className="stat">
           <span className="stat-value stat-gems">{user.gems} ◆</span>
@@ -112,6 +123,22 @@ export function ProfileView({
       <button className="btn btn-primary" onClick={claimDaily} disabled={dailyBusy}>
         {dailyBusy ? "…" : "Забрать ежедневную награду"}
       </button>
+
+      <div className="menu-list">
+        {MENU.map((item) => (
+          <button
+            className="menu-row"
+            key={item.key}
+            onClick={() =>
+              item.key === "shop" ? onNavigate?.("shop") : notify("Скоро добавим", "ok")
+            }
+          >
+            <span className="menu-title">{item.title}</span>
+            <span className="menu-hint">{item.key === "pass" ? `${user.level} / 30` : item.hint}</span>
+            <span className="menu-chevron">›</span>
+          </button>
+        ))}
+      </div>
 
       {top.length > 0 && (
         <>

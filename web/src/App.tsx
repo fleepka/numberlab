@@ -9,6 +9,7 @@ import { RatingView } from "./components/Rating";
 import { ShopView } from "./components/Shop";
 import { SpinView } from "./components/Spin";
 import { TasksView } from "./components/Tasks";
+import { shortMoney } from "./format";
 import type { MeResponse } from "./types";
 
 type Tab =
@@ -130,9 +131,12 @@ export default function App() {
           <div className="pill" title="Энергия">
             ⚡ {me.user.energy}
           </div>
-          <div className="pill pill-coins" title="Монеты">
-            М {me.user.coins.toLocaleString("ru-RU")}
+          <div className="pill pill-coins" title="Баланс">
+            {shortMoney(me.user.coins)}
           </div>
+          <button className="pill pill-gift" title="Магазин" onClick={() => setTab("shop")}>
+            🎁
+          </button>
         </div>
       </header>
 
@@ -161,6 +165,7 @@ export default function App() {
             top={me.top}
             refresh={refresh}
             notify={notify}
+            onNavigate={(next) => setTab(next)}
           />
         )}
       </main>

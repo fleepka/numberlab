@@ -89,7 +89,8 @@ export const api = {
       energy: number;
       rewards: { coins: number; energy: number; gems: number };
     }>(`/api/tasks/${code}/claim`, { method: "POST" }),
-  rating: () => request<RatingData>("/api/rating"),
+  rating: (period: "season" | "week" = "season") =>
+    request<RatingData>(`/api/rating?period=${period}`),
   friends: () => request<FriendsData>("/api/friends"),
   duels: () => request<{ open: DuelT[]; mine: DuelT[] }>("/api/duels"),
   createDuel: (bet: number) =>

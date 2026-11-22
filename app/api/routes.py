@@ -175,10 +175,16 @@ async def friends_view(user: User = Depends(current_user)) -> dict:
 
 @router.get("/rating")
 async def rating_view(
+    period: str = "season",
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    return {"items": await leaderboard(session), "me": await position(session, user.id)}
+    period = "week" if period == "week" else "season"
+    return {
+        "period": period,
+        "items": await leaderboard(session, period=period),
+        "me": await position(session, user.id, period),
+    }
 
 
 @router.get("/feed")

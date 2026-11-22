@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, tg } from "../api";
+import { daysLeftInMonth, money } from "../format";
 import { formatTime, rarityColor, rarityLabel } from "../rarity";
 import type { PlateT, UserT } from "../types";
 import { Plate } from "./Plate";
@@ -13,7 +14,7 @@ const LINKS = [
   { id: "duels", label: "Дуэли", hint: "1 на 1 на монеты" },
 ] as const;
 
-type NextTab = (typeof LINKS)[number]["id"];
+type NextTab = (typeof LINKS)[number]["id"] | "garage";
 
 function pick(source: string): string {
   return source[Math.floor(Math.random() * source.length)];
@@ -39,6 +40,7 @@ export function SpinView({
   const [rolling, setRolling] = useState(false);
   const [preview, setPreview] = useState(previewCode);
   const [result, setResult] = useState<PlateT | null>(null);
+  const [selling, setSelling] = useState(false);
   const [readyIn, setReadyIn] = useState(user.energy_in);
   const interval = useRef<number | null>(null);
 
@@ -86,10 +88,38 @@ export function SpinView({
     }
   }
 
-  const color = result ? rarityColor(result.rarity) : "#c6ff3d";
+  async function sellResult() {
+    if (!result || selling) return;
+    setSelling(true);
+    try {
+      const response = await api.sell(result.id);
+      notify(`Номер ${result.code} продан за ${money(response.amount)}`, "ok");
+      setResult(null);
+      await refresh();
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setSelling(false);
+    }
+  }
+
+  function share() {
+    if (!result) return;
+    const text = `Мой номер ${result.code} стоит ${money(result.price)} в NUMBERLAB`;
+    const url = `https://t.me/share/url?url=${encodeURIComponent("https://t.me/NumbersLab_bot/app")}&text=${encodeURIComponent(text)}`;
+    if (tg?.openTelegramLink) tg.openTelegramLink(url);
+    else window.open(url, "_blank");
+  }
+
+  const color = result ? rarityColor(result.rarity) : "#f5c451";
 
   return (
     <section className="view">
+      <div className="season-row">
+        <span className="season-pill">🏆 Сезон 1 · ещё {daysLeftInMonth()} д</span>
+        <span className="country-pill">🇷🇺 RUS</span>
+      </div>
+
       <div className="stage">
         <div className="stage-glow" style={{ background: color }} />
         <div className={rolling ? "reel reel-spinning" : "reel"}>
@@ -101,31 +131,54 @@ export function SpinView({
             <span className="result-rarity" style={{ color }}>
               {rarityLabel(result.rarity)}
             </span>
-            <span className="result-price">+{result.price.toLocaleString("ru-RU")} монет</span>
+            <span className="result-price">{money(result.price)}</span>
+            {result.factors && result.factors.length > 0 && (
+              <div className="factor-chips">
+                {result.factors.map((factor) => (
+                  <span className="chip" key={factor.title}>
+                    {factor.title} ×{factor.points}
+                  </span>
+                ))}
+              </div>
+            )}
+            <button className="share-btn" onClick={share}>
+              Поделиться ↗
+            </button>
           </div>
         ) : (
           <p className="stage-hint">
-            {rolling ? "Крутим барабан…" : "Крути номер и собирай коллекцию"}
+            {rolling ? "Крутим…" : "Крути номер и собирай коллекцию"}
           </p>
         )}
       </div>
 
+      <div className="result-actions">
+        <button
+          className="btn btn-ghost"
+          onClick={() => onNavigate?.("garage")}
+          disabled={!result || rolling}
+        >
+          В гараж
+        </button>
+        <button className="btn btn-ghost" onClick={sellResult} disabled={!result || selling}>
+          {selling ? "…" : "Продать"}
+        </button>
+      </div>
+
       <button className="btn btn-primary btn-lg" onClick={roll} disabled={rolling}>
-        {rolling ? "Крутим…" : free ? "Крутить · ⚡1" : `Крутить · ${cost} монет`}
+        {rolling ? "Крутим…" : free ? "Крутить · ⚡1" : `Крутить · ${money(cost)}`}
       </button>
 
-      <div className="stage-meta">
-        <span>
-          ⚡ {user.energy}/{user.energy_max}
-        </span>
+      <div className="energy-line">
+        <span>⚡ {user.energy}</span>
         <span className="dot" />
         {user.energy >= user.energy_max ? (
-          <span>Энергия полная</span>
+          <span>энергия полная</span>
         ) : (
           <span>+1 через {formatTime(readyIn)}</span>
         )}
         <span className="dot" />
-        <span>Номеров: {user.spins}</span>
+        <span className="muted">номеров: {user.spins}</span>
       </div>
 
       {onNavigate && (
@@ -139,25 +192,11 @@ export function SpinView({
         </div>
       )}
 
-      {result && result.factors && result.factors.length > 0 && (
-        <div className="panel factors">
-          <h3>Почему такая цена</h3>
-          <div className="factor-list">
-            {result.factors.map((factor) => (
-              <div className="factor" key={factor.title}>
-                <span>{factor.title}</span>
-                <span className="factor-points">+{factor.points}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="panel tip">
         <h3>Как это работает</h3>
         <p>
           Цена номера зависит от рисунка: три одинаковые цифры, последовательности, повтор букв
-          и код региона повышают редкость. Проданный номер приносит монеты, редкие попадают в ленту.
+          и код региона повышают редкость. Проданный номер приносит деньги, редкие попадают в ленту.
         </p>
       </div>
     </section>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { money } from "../format";
 import type { CollectionT } from "../types";
 
 export function CollectionsView({
@@ -35,7 +36,7 @@ export function CollectionsView({
     setBusy(item.id);
     try {
       const result = await api.claimCollection(item.id);
-      const parts = [`+${result.rewards.coins} монет`];
+      const parts = [`+${money(result.rewards.coins)}`];
       if (result.rewards.gems) parts.push(`+${result.rewards.gems} GEMS`);
       if (result.rewards.xp) parts.push(`+${result.rewards.xp} XP`);
       notify(`${item.title}: ${parts.join(", ")}`, "ok");
@@ -84,7 +85,7 @@ export function CollectionsView({
 
               <div className="collection-foot">
                 <div className="rewards">
-                  <span className="price">{item.reward_coins} монет</span>
+                  <span className="price">{money(item.reward_coins)}</span>
                   {item.reward_gems > 0 && <span className="gems-text">{item.reward_gems} ◆</span>}
                   <span className="muted small">{item.reward_xp} XP</span>
                 </div>

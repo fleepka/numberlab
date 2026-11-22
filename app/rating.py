@@ -1,22 +1,41 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Plate, User
 
 
-async def leaderboard(session: AsyncSession, limit: int = 50) -> list[dict]:
+def week_start(moment: datetime | None = None) -> datetime:
+    moment = moment or datetime.now(timezone.utc)
+    start = moment - timedelta(days=moment.weekday())
+    return start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _plate_filter(period: str):
+    if period == "week":
+        return Plate.created_at >= week_start()
+    return None
+
+
+async def leaderboard(session: AsyncSession, limit: int = 50, period: str = "season") -> list[dict]:
     total = func.coalesce(func.sum(Plate.price), 0).label("total")
     count = func.count(Plate.id).label("plates")
+    condition = _plate_filter(period)
 
-    rows = await session.execute(
+    query = (
         select(User.id, User.username, User.first_name, total, count)
         .join(Plate, Plate.owner_id == User.id)
         .group_by(User.id)
         .order_by(total.desc(), count.desc())
         .limit(limit)
     )
+    if condition is not None:
+        query = query.where(condition)
+
+    rows = await session.execute(query)
 
     return [
         {
@@ -30,17 +49,17 @@ async def leaderboard(session: AsyncSession, limit: int = 50) -> list[dict]:
     ]
 
 
-async def position(session: AsyncSession, user_id: int) -> dict:
-    summary = (
-        select(
-            User.id.label("uid"),
-            func.coalesce(func.sum(Plate.price), 0).label("total"),
-            func.count(Plate.id).label("plates"),
-        )
-        .join(Plate, Plate.owner_id == User.id)
-        .group_by(User.id)
-        .subquery()
-    )
+async def position(session: AsyncSession, user_id: int, period: str = "season") -> dict:
+    condition = _plate_filter(period)
+
+    summary_query = select(
+        User.id.label("uid"),
+        func.coalesce(func.sum(Plate.price), 0).label("total"),
+        func.count(Plate.id).label("plates"),
+    ).join(Plate, Plate.owner_id == User.id)
+    if condition is not None:
+        summary_query = summary_query.where(condition)
+    summary = summary_query.group_by(User.id).subquery()
 
     mine = (
         await session.execute(
