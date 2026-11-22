@@ -5,12 +5,13 @@ import { rarityColor, rarityLabel } from "../rarity";
 import type { AuctionData, Offer, ShopData } from "../types";
 import { Plate } from "./Plate";
 
-type Tab = "numbers" | "tickets" | "auction" | "style";
+type Tab = "numbers" | "tickets" | "auction" | "garage" | "style";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "numbers", label: "Номера" },
   { id: "tickets", label: "Билеты" },
   { id: "auction", label: "Аукцион" },
+  { id: "garage", label: "Гараж" },
   { id: "style", label: "Стиль" },
 ];
 
@@ -28,6 +29,31 @@ export function ShopView({
   const [busy, setBusy] = useState<string | null>(null);
   const [auction, setAuction] = useState<AuctionData | null>(null);
   const [bidValue, setBidValue] = useState("");
+  const [garageSlots, setGarageSlots] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (tab !== "garage") return;
+    api
+      .garage()
+      .then((data) => setGarageSlots(data.slots))
+      .catch((error: Error) => notify(error.message, "err"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  async function buySlots() {
+    if (busy) return;
+    setBusy("slots");
+    try {
+      const result = await api.buySlots();
+      setGarageSlots(result.slots);
+      notify(`Гараж расширен до ${result.slots} мест`, "ok");
+      await refresh();
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   useEffect(() => {
     if (tab !== "auction") return;
@@ -221,6 +247,29 @@ export function ShopView({
               </p>
             </>
           )}
+        </div>
+      )}
+
+      {tab === "garage" && (
+        <div className="card vip-card">
+          <div className="section-head">
+            <h3>Гараж</h3>
+            <span className="badge">{garageSlots ?? "—"} / 50</span>
+          </div>
+          <p className="muted small">
+            +5 мест за 200 ◆. Чем больше номеров, тем выше ранг коллекции.
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={buySlots}
+            disabled={busy === "slots" || (garageSlots ?? 0) >= 50}
+          >
+            {busy === "slots"
+              ? "…"
+              : garageSlots !== null && garageSlots >= 50
+                ? "Максимум"
+                : "Расширить · ◆ 200"}
+          </button>
         </div>
       )}
 

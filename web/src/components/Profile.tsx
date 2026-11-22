@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, tg } from "../api";
+import { money } from "../format";
 import { rarityColor, rarityLabel } from "../rarity";
-import type { PlateT, Product, Tx, UserT } from "../types";
+import type { PlateT, Product, RankT, Tx, UserT } from "../types";
 import { Plate } from "./Plate";
 
 const REASONS: Record<string, string> = {
@@ -31,6 +32,7 @@ function signed(value: number, currency: string): string {
 export function ProfileView({
   user,
   garageCount,
+  rank,
   top,
   refresh,
   notify,
@@ -38,6 +40,7 @@ export function ProfileView({
 }: {
   user: UserT;
   garageCount: number;
+  rank: RankT;
   top: PlateT[];
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
@@ -168,13 +171,28 @@ export function ProfileView({
         </div>
       </div>
 
+      <div className="card rank-card">
+        <div className="rank-top">
+          <span className="muted small">Ранг коллекции</span>
+          <span className="rank-title">{rank.title}</span>
+        </div>
+        <div className="progress">
+          <div className="progress-fill" style={{ width: `${rank.progress}%` }} />
+        </div>
+        <span className="muted small">
+          {rank.next
+            ? `${money(rank.total)} · до «${rank.next_title}» ${money(rank.next - rank.total)}`
+            : `${money(rank.total)} · максимальный ранг`}
+        </span>
+      </div>
+
       <button className="btn btn-primary" onClick={claimDaily} disabled={dailyBusy}>
         {dailyBusy ? "…" : "Забрать ежедневную награду"}
       </button>
 
       <div className="card vip-card">
         <div className="section-head">
-          <h3>VIP</h3>
+          <h3>VIP+</h3>
           {user.vip_until && <span className="badge">до {user.vip_until}</span>}
         </div>
         <ul className="vip-list">
@@ -183,11 +201,11 @@ export function ProfileView({
           <li>30 дней, продлевается в любой момент</li>
         </ul>
         <button className="btn btn-primary" onClick={() => buyProduct("vip")} disabled={buying !== null}>
-          {buying === "vip" ? "…" : "Оформить VIP · 99 ★"}
+          {buying === "vip" ? "…" : "Оформить VIP+ · 99 ★"}
         </button>
       </div>
 
-      {products.some((item) => item.kind === "style") && (
+      {products.some((item) => item.kind === "style" || item.kind === "plate") && (
         <>
           <div className="section-head">
             <h3>Косметика</h3>
@@ -195,22 +213,34 @@ export function ProfileView({
           </div>
           <div className="shop-grid">
             {products
-              .filter((item) => item.kind === "style")
-              .map((item) => (
-                <article className="card shop-card" key={item.code}>
-                  <span className="frame-preview" style={{ borderColor: item.color ?? "#ffc247" }}>
-                    рамка
-                  </span>
-                  <span className="stars-price">{item.stars} ★</span>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => buyProduct(item.code)}
-                    disabled={buying !== null}
-                  >
-                    {buying === item.code ? "…" : user.frame === item.code.slice(6) ? "надето" : "Купить"}
-                  </button>
-                </article>
-              ))}
+              .filter((item) => item.kind === "style" || item.kind === "plate")
+              .map((item) => {
+                const plate = item.kind === "plate";
+                const equipped = plate
+                  ? user.plate_skin === item.code.slice(6)
+                  : user.frame === item.code.slice(6);
+                return (
+                  <article className="card shop-card" key={item.code}>
+                    <span
+                      className={plate ? "plate-swatch" : "frame-preview"}
+                      style={{
+                        borderColor: item.color ?? "#ffc247",
+                        background: plate && item.color ? `${item.color}22` : undefined,
+                      }}
+                    >
+                      {plate ? "номер" : "рамка"}
+                    </span>
+                    <span className="stars-price">{item.stars} ★</span>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => buyProduct(item.code)}
+                      disabled={buying !== null}
+                    >
+                      {buying === item.code ? "…" : equipped ? "надето" : "Купить"}
+                    </button>
+                  </article>
+                );
+              })}
           </div>
         </>
       )}

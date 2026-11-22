@@ -24,6 +24,7 @@ from app.friends import invite_link, ladder_view
 from app.friends import contest as friends_contest
 from app.friends import invited_list
 from app.promo import redeem as redeem_promo
+from app.rank import rank_for
 from app.rating import leaderboard, position
 from app.tasks import catalog as tasks_catalog
 from app.tasks import claim as claim_task
@@ -63,9 +64,13 @@ async def me(user: User = Depends(current_user), session: AsyncSession = Depends
     top = await session.scalars(
         select(Plate).where(Plate.owner_id == user.id).order_by(Plate.price.desc()).limit(5)
     )
+    garage_total = await session.scalar(
+        select(func.coalesce(func.sum(Plate.price), 0)).where(Plate.owner_id == user.id)
+    )
     return {
         "user": user_json(user),
         "garage_count": garage_count or 0,
+        "rank": rank_for(int(garage_total or 0)),
         "top": [plate_json(p) for p in top],
         "stakes": STAKES,
         "energy_costs": ENERGY_COST,

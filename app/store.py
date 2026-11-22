@@ -20,6 +20,20 @@ PRODUCTS: dict[str, dict] = {
         }
         for code, item in FRAMES.items()
     },
+    **{
+        f"plate:{code}": {
+            "stars": 19,
+            "title": f"Фон номера «{title}»",
+            "kind": "plate",
+            "plate": code,
+            "color": color,
+        }
+        for code, (title, color) in {
+            "neon": ("Неон", "#35e0c0"),
+            "gold": ("Золото", "#e8c47c"),
+            "ice": ("Лёд", "#8fb7ff"),
+        }.items()
+    },
 }
 
 
@@ -30,7 +44,8 @@ def catalog() -> list[dict]:
             "title": item["title"],
             "stars": item["stars"],
             "kind": item["kind"],
-            "color": FRAMES[item["frame"]]["color"] if item["kind"] == "style" else None,
+            "color": item.get("color")
+            or (FRAMES[item["frame"]]["color"] if item["kind"] == "style" else None),
         }
         for code, item in PRODUCTS.items()
     ]
@@ -65,6 +80,8 @@ async def fulfil(session: AsyncSession, purchase: Purchase) -> bool:
         apply_vip(user)
     elif product["kind"] == "style":
         user.frame = product["frame"]
+    elif product["kind"] == "plate":
+        user.plate_skin = product["plate"]
 
     purchase.status = "paid"
     purchase.paid_at = now()

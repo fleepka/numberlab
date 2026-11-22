@@ -102,6 +102,10 @@ export default function App() {
   }, [me?.user.theme]);
 
   useEffect(() => {
+    document.documentElement.dataset.plate = me?.user.plate_skin || "classic";
+  }, [me?.user.plate_skin]);
+
+  useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), 2600);
     return () => window.clearTimeout(timer);
@@ -201,6 +205,7 @@ export default function App() {
           <ProfileView
             user={me.user}
             garageCount={me.garage_count}
+            rank={me.rank}
             top={me.top}
             refresh={refresh}
             notify={notify}

@@ -2454,3 +2454,53 @@ body {
 .rule {
   border-color: transparent;
 }
+
+/* country flags on plates */
+
+.plate-flag {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.plate-flag-ru {
+  background-image: linear-gradient(180deg, #ffffff 33.3%, #1b4fa8 33.3% 66.6%, #d0342c 66.6%);
+}
+
+.plate-flag-kz {
+  background-image: radial-gradient(circle at 50% 42%, #fec50c 0 20%, rgba(0, 0, 0, 0) 21%),
+    linear-gradient(180deg, #00afca, #00afca);
+}
+
+.plate-flag-by {
+  background-image: linear-gradient(
+    180deg,
+    #c8313e 0 63%,
+    #ffffff 63% 70%,
+    #4aa657 70%
+  );
+}
+
+.plate-flag-uz {
+  background-image: linear-gradient(
+    180deg,
+    #0099b5 0 32%,
+    #ce1126 32% 36%,
+    #ffffff 36% 64%,
+    #ce1126 64% 68%,
+    #1eb53a 68%
+  );
+}
+
+.plate-flag-ae {
+  background-image: linear-gradient(90deg, #ce1126 0 22%, rgba(0, 0, 0, 0) 22%),
+    linear-gradient(180deg, #00843d 0 33.3%, #ffffff 33.3% 66.6%, #000000 66.6%);
+}
+
+.plate-by .plate-side {
+  background: #f4f7f0;
+}
+
+.plate-uz .plate-side {
+  background: #eef6fb;
+}

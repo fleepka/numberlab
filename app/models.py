@@ -58,6 +58,7 @@ class User(Base):
     garage_slots: Mapped[int] = mapped_column(Integer, default=22)
     vip_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     frame: Mapped[str] = mapped_column(String(16), default="")
+    plate_skin: Mapped[str] = mapped_column(String(24), default="")
     theme: Mapped[str] = mapped_column(String(24), default="champagne")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

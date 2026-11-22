@@ -28,7 +28,7 @@ function split(code: string, country: string) {
   if (country === "UZ") {
     const m = UZ.exec(clean);
     return m
-      ? { head: m[1], mid: `${m[2]}${m[3]}`, tail: m[4], region: m[1], leading: true }
+      ? { head: "", mid: `${m[2]}${m[3]}`, tail: m[4], region: m[1], leading: true }
       : null;
   }
   if (country === "AE") {
@@ -76,18 +76,16 @@ export function Plate({
         <span className="plate-digits">{parsed.mid}</span>
         {parsed.tail && <span className="plate-letter">{parsed.tail}</span>}
       </div>
-      {parsed.region && !parsed.leading && (
-        <div className="plate-side">
-          <span className="plate-rus">{flag}</span>
-          <span className="plate-flag" aria-hidden="true" />
+      <div className="plate-side">
+        <span className="plate-rus">{flag}</span>
+        <span
+          className={`plate-flag plate-flag-${country.toLowerCase()}`}
+          aria-hidden="true"
+        />
+        {!parsed.leading && parsed.region && (
           <span className="plate-region">{parsed.region}</span>
-        </div>
-      )}
-      {country === "AE" && (
-        <div className="plate-side">
-          <span className="plate-rus">UAE</span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

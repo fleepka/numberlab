@@ -40,6 +40,7 @@ export type UserT = {
   pass_premium: boolean;
   vip_until: string | null;
   frame: string;
+  plate_skin: string;
   theme: string;
 };
 
@@ -161,9 +162,19 @@ export type Country = {
   flag: string;
 };
 
+export type RankT = {
+  title: string;
+  index: number;
+  total: number;
+  next: number | null;
+  next_title: string | null;
+  progress: number;
+};
+
 export type MeResponse = {
   user: UserT;
   garage_count: number;
+  rank: RankT;
   top: PlateT[];
   stakes: Record<string, number>;
   energy_costs: Record<string, number>;
