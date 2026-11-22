@@ -156,6 +156,66 @@ DEFAULT_COLLECTIONS: list[dict] = [
         "reward_xp": 400,
         "sort": 120,
     },
+    {
+        "code": "country_ru",
+        "title": "Российский гараж",
+        "description": "Пять номеров из России",
+        "rule_kind": "country",
+        "rule_value": "RU",
+        "target": 5,
+        "reward_coins": 4000,
+        "reward_gems": 1,
+        "reward_xp": 200,
+        "sort": 200,
+    },
+    {
+        "code": "country_kz",
+        "title": "Казахстанская серия",
+        "description": "Пять номеров из Казахстана",
+        "rule_kind": "country",
+        "rule_value": "KZ",
+        "target": 5,
+        "reward_coins": 4000,
+        "reward_gems": 1,
+        "reward_xp": 200,
+        "sort": 210,
+    },
+    {
+        "code": "country_by",
+        "title": "Белорусский ряд",
+        "description": "Пять номеров из Беларуси",
+        "rule_kind": "country",
+        "rule_value": "BY",
+        "target": 5,
+        "reward_coins": 3500,
+        "reward_gems": 1,
+        "reward_xp": 180,
+        "sort": 220,
+    },
+    {
+        "code": "country_uz",
+        "title": "Узбекская подборка",
+        "description": "Пять номеров из Узбекистана",
+        "rule_kind": "country",
+        "rule_value": "UZ",
+        "target": 5,
+        "reward_coins": 3000,
+        "reward_gems": 1,
+        "reward_xp": 180,
+        "sort": 230,
+    },
+    {
+        "code": "country_ae",
+        "title": "Дубайский сет",
+        "description": "Три номера из ОАЭ",
+        "rule_kind": "country",
+        "rule_value": "AE",
+        "target": 3,
+        "reward_coins": 9000,
+        "reward_gems": 2,
+        "reward_xp": 300,
+        "sort": 240,
+    },
 ]
 
 
@@ -179,6 +239,8 @@ def matches(rule_kind: str, rule_value: str | None, plate: Plate) -> bool:
         return plate.region == rule_value
     if rule_kind == "rarity_min":
         return bool(rule_value) and tier_index(plate.rarity) >= tier_index(rule_value)
+    if rule_kind == "country":
+        return bool(rule_value) and getattr(plate, "country", "RU") == rule_value
     return False
 
 

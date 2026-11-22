@@ -11,6 +11,7 @@ import random
 import re
 import secrets
 from dataclasses import dataclass, replace
+from datetime import date
 
 LETTERS = "АВЕКМНОРСТУХ"
 
@@ -76,6 +77,15 @@ FORMATS: dict[str, dict] = {
 
 LATIN_LETTERS = "ABCDEFGHIJKLMNPQRSTUVWXYZ"
 AE_DIGIT_MULT = {1: 600.0, 2: 120.0, 3: 20.0, 4: 4.0, 5: 1.0}
+
+# «Мода»: раз в неделю один регион стоит дороже — как хайп вокруг серий на рынке.
+HYPE_ROTATION = ["77", "97", "99", "50", "01", "23", "66", "78"]
+HYPE_MULT = 1.4
+
+
+def hype_region(day: date | None = None) -> str:
+    week = (day or date.today()).isocalendar()[1]
+    return HYPE_ROTATION[week % len(HYPE_ROTATION)]
 
 COUNTRY_CODES = tuple(COUNTRIES)
 
@@ -274,11 +284,15 @@ def tier_index(rarity: str) -> int:
     return TIERS.index(rarity)
 
 
-def price_of(total: int, rarity: str, country: str = "RU", digits: str = "") -> int:
+def price_of(
+    total: int, rarity: str, country: str = "RU", digits: str = "", region: str = ""
+) -> int:
     base = TIER_BASE[rarity] + SCORE_STEP[rarity] * total
     mult = COUNTRIES.get(country, COUNTRIES["RU"])["mult"]
     if country == "AE":
         mult *= AE_DIGIT_MULT.get(len(digits), 1.0)
+    if country == "RU" and region and region == hype_region():
+        mult *= HYPE_MULT
     return max(100, int(round(base * mult / 100) * 100))
 
 
@@ -348,7 +362,7 @@ def build(letters: str, digits: str, region: str = "", country: str = "RU") -> P
         letters=letters,
         region=region,
         score=total,
-        price=price_of(total, rarity, country, digits),
+        price=price_of(total, rarity, country, digits, region),
         rarity=rarity,
         stars=STARS_PRICE[rarity],
         factors=factors,

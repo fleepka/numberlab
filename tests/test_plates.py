@@ -4,9 +4,11 @@ from app.plates import (
     STAKES,
     TIER_BASE,
     build,
+    hype_region,
     parse_code,
     plate_for_tier,
     pretty_plate,
+    price_of,
     rarity_of,
     spin_plate,
     tier_index,
@@ -58,6 +60,14 @@ def test_price_formula_matches_tier():
     plate = build("АВС", SEQ, "50")
     raw = TIER_BASE[plate.rarity] + SCORE_STEP[plate.rarity] * plate.score
     assert plate.price == round(raw / 100) * 100
+
+
+def test_hype_region_costs_more():
+    hot = hype_region()
+    other = next(code for code in ("75", "76", "74") if code != hot)
+    boosted = build("АВС", PLAIN, hot, "RU")
+    plain = build("АВС", PLAIN, other, "RU")
+    assert boosted.price > plain.price
 
 
 def test_special_numbers_are_epic():
@@ -117,8 +127,7 @@ def test_parse_code_with_country():
 def test_generated_plate_is_consistent():
     for _ in range(80):
         plate = pretty_plate()
-        raw = TIER_BASE[plate.rarity] + SCORE_STEP[plate.rarity] * plate.score
-        assert plate.price == round(raw / 100) * 100
+        assert plate.price == price_of(plate.score, plate.rarity, "RU", plate.digits, plate.region)
         assert plate.stars >= 1
         assert parse_code(plate.code) == plate
 

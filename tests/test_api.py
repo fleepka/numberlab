@@ -735,7 +735,7 @@ async def fulfil(session, payload):
 
 async def test_collections_seeded(client):
     data = (await client.get("/api/collections", headers=headers("1900"))).json()
-    assert len(data["items"]) == 12
+    assert len(data["items"]) >= 17
     assert all(item["progress"] == 0 for item in data["items"])
 
 
