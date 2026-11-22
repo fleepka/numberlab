@@ -15,7 +15,7 @@ const REASONS: Record<string, string> = {
 };
 
 const MENU = [
-  { key: "pass", title: "Сезонный пропуск", hint: "" },
+  { key: "pass", title: "Сезонный пропуск", hint: "награды сезона" },
   { key: "shop", title: "Магазин", hint: "номера и награды" },
   { key: "promo", title: "Промокод", hint: "ввести код" },
   { key: "settings", title: "Настройки", hint: "профиль и уведомления" },
@@ -41,7 +41,7 @@ export function ProfileView({
   top: PlateT[];
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
-  onNavigate?: (tab: "shop") => void;
+  onNavigate?: (tab: "shop" | "pass") => void;
 }) {
   const [history, setHistory] = useState<Tx[]>([]);
   const [dailyBusy, setDailyBusy] = useState(false);
@@ -130,11 +130,13 @@ export function ProfileView({
             className="menu-row"
             key={item.key}
             onClick={() =>
-              item.key === "shop" ? onNavigate?.("shop") : notify("Скоро добавим", "ok")
+              item.key === "shop" || item.key === "pass"
+                ? onNavigate?.(item.key)
+                : notify("Скоро добавим", "ok")
             }
           >
             <span className="menu-title">{item.title}</span>
-            <span className="menu-hint">{item.key === "pass" ? `${user.level} / 30` : item.hint}</span>
+            <span className="menu-hint">{item.hint}</span>
             <span className="menu-chevron">›</span>
           </button>
         ))}

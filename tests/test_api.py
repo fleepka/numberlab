@@ -294,6 +294,55 @@ async def test_hunt_claim_once(client):
     assert again.status_code == 400
 
 
+async def test_pass_claim_requires_level(client):
+    await get_me(client, "2000")
+    response = await client.post(
+        "/api/pass/claim", headers=headers("2000"), json={"level": 1, "track": "free"}
+    )
+    assert response.status_code == 400
+
+
+async def test_pass_claim_once_per_level(client):
+    await get_me(client, "2001")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2001))
+        user.season_points = 1000
+        await session.commit()
+
+    first = await client.post(
+        "/api/pass/claim", headers=headers("2001"), json={"level": 1, "track": "free"}
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["rewards"]["coins"] > 0
+
+    again = await client.post(
+        "/api/pass/claim", headers=headers("2001"), json={"level": 1, "track": "free"}
+    )
+    assert again.status_code == 400
+
+
+async def test_pass_premium_branch_locked_until_bought(client):
+    await get_me(client, "2010")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2010))
+        user.season_points = 1000
+        await session.commit()
+
+    locked = await client.post(
+        "/api/pass/claim", headers=headers("2010"), json={"level": 1, "track": "premium"}
+    )
+    assert locked.status_code == 400
+
+    bought = await client.post("/api/pass/buy", headers=headers("2010"))
+    assert bought.status_code == 200
+    assert bought.json()["premium"] is True
+
+    unlocked = await client.post(
+        "/api/pass/claim", headers=headers("2010"), json={"level": 1, "track": "premium"}
+    )
+    assert unlocked.status_code == 200
+
+
 async def test_daily_once_per_day(client):
     first = await client.post("/api/daily", headers=headers("1300"))
     assert first.status_code == 200

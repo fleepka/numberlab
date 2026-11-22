@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +10,7 @@ from app import tickets as ticket_service
 from app.api.deps import current_user
 from app.api.serializers import plate_json, tx_json, user_json
 from app.db import get_session
+from app.config import settings
 from app.craft import craft
 from app.collections import catalog as collections_catalog
 from app.collections import claim as claim_collection
@@ -21,8 +24,13 @@ from app.game import GameError, claim_daily, sell_plate, spin
 from app.garage import claim_income, income_state, sell_many
 from app.hunts import claim as claim_hunt
 from app.hunts import view as hunt_state
-from app.models import Plate, User
+from app.models import Plate, Purchase, User
+from app.passes import PREMIUM_STARS
+from app.passes import claim as claim_pass
+from app.passes import unlock as unlock_pass
+from app.passes import view as pass_view
 from app.plates import STAKES
+from app.tg import stars_invoice
 
 router = APIRouter(prefix="/api", tags=["profile"])
 
@@ -250,6 +258,71 @@ async def rating_view(
         "items": await leaderboard(session, period=period),
         "me": await position(session, user.id, period),
     }
+
+
+@router.get("/pass")
+async def pass_view_route(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return await pass_view(session, user)
+
+
+@router.post("/pass/claim")
+async def pass_claim_route(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        level = int(payload.get("level", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="некорректный уровень") from None
+    track = str(payload.get("track", ""))
+    try:
+        result = await claim_pass(session, user.id, level, track)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
+
+
+@router.post("/pass/buy")
+async def pass_buy_route(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    if user.pass_premium:
+        return {"dev": settings.dev_mode, "premium": True, "invoice_url": None}
+
+    purchase = Purchase(
+        user_id=user.id,
+        code="pass",
+        stars=PREMIUM_STARS,
+        payload=f"pass:{secrets.token_hex(12)}",
+    )
+    session.add(purchase)
+    await session.flush()
+
+    try:
+        url = await stars_invoice(
+            title="Премиум-пропуск",
+            description="Вторая ветка наград сезонного пропуска",
+            payload=purchase.payload,
+            stars=PREMIUM_STARS,
+        )
+    except RuntimeError:
+        if not settings.dev_mode:
+            await session.rollback()
+            raise HTTPException(status_code=503, detail="оплата временно недоступна") from None
+        purchase.status = "paid"
+        await unlock_pass(session, user.id)
+        await session.commit()
+        return {"dev": True, "premium": True, "invoice_url": None}
+
+    await session.commit()
+    return {"dev": False, "premium": False, "invoice_url": url}
 
 
 @router.get("/hunt")

@@ -36,6 +36,31 @@ export type UserT = {
   streak: number;
 };
 
+export type PassReward = {
+  coins: number;
+  gems: number;
+  energy: number;
+  ticket: string;
+  claimed: boolean;
+};
+
+export type PassLevel = {
+  level: number;
+  unlocked: boolean;
+  free: PassReward;
+  premium: PassReward;
+};
+
+export type PassData = {
+  points: number;
+  level: number;
+  max_level: number;
+  points_per_level: number;
+  premium: boolean;
+  price_stars: number;
+  levels: PassLevel[];
+};
+
 export type HuntT = {
   title: string;
   kind: string;

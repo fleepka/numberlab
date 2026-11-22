@@ -8,6 +8,7 @@ from app.economy import GameError, apply_delta, lock_user, now
 from app.models import Collection, Plate, UserCollection
 from app.plates import is_pair, is_palindrome, is_sequence, is_triple, tier_index
 from app.progress import award_xp
+from app.passes import POINTS_COLLECTION
 from app.tasks import bump
 
 DEFAULT_COLLECTIONS: list[dict] = [
@@ -270,6 +271,7 @@ async def claim(session: AsyncSession, user_id: int, collection_id: int) -> dict
             session, user, collection.reward_gems, "collection", currency="gems", ref=collection.code
         )
     award_xp(user, collection.reward_xp)
+    user.season_points += POINTS_COLLECTION
     await bump(session, user, "collection")
 
     return {

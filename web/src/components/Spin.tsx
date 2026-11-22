@@ -13,6 +13,7 @@ const LINKS = [
   { id: "collections", label: "Коллекции", hint: "награды" },
   { id: "duels", label: "Дуэли", hint: "1 на 1" },
   { id: "tickets", label: "Билеты", hint: "прокрутка" },
+  { id: "pass", label: "Пропуск", hint: "награды" },
 ] as const;
 
 type NextTab = (typeof LINKS)[number]["id"] | "garage";

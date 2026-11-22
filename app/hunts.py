@@ -95,6 +95,7 @@ async def view(session: AsyncSession, user: User) -> dict:
 
 
 async def claim(session: AsyncSession, user_id: int) -> dict:
+    from app.passes import POINTS_HUNT
     from app.tickets import grant as grant_ticket
 
     hunt = await today(session)
@@ -116,6 +117,7 @@ async def claim(session: AsyncSession, user_id: int) -> dict:
     add_energy(user, hunt.reward_energy)
     if hunt.reward_ticket:
         await grant_ticket(session, user.id, hunt.reward_ticket)
+    user.season_points += POINTS_HUNT
 
     return {
         "coins": user.coins,

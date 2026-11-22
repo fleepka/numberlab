@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.economy import GameError, apply_delta, lock_user, now
 from app.energy import add as add_energy
 from app.models import Task, TaskProgress, User
+from app.passes import POINTS_TASK
 from app.progress import award_xp
 from app.tickets import grant as grant_ticket
 
@@ -227,6 +228,7 @@ async def claim(session: AsyncSession, user_id: int, code: str) -> dict:
     add_energy(user, task.reward_energy)
     if task.reward_ticket:
         await grant_ticket(session, user.id, task.reward_ticket)
+    user.season_points += POINTS_TASK
     award_xp(user, 20)
 
     return {

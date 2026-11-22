@@ -58,6 +58,14 @@ async def fulfil_purchase(session: AsyncSession, payload: str) -> Plate | None:
     if purchase is None or purchase.status == "paid":
         return None
 
+    if purchase.code == "pass":
+        user = await session.scalar(select(User).where(User.id == purchase.user_id))
+        if user is not None:
+            user.pass_premium = True
+        purchase.status = "paid"
+        purchase.paid_at = now()
+        return None
+
     if await session.scalar(select(Plate.id).where(Plate.code == purchase.code)):
         purchase.status = "failed"
         return None

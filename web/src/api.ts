@@ -7,6 +7,8 @@ import type {
   JoinResult,
   MeResponse,
   Offer,
+  PassData,
+  PassReward,
   PlateT,
   RatingData,
   TaskT,
@@ -124,6 +126,16 @@ export const api = {
       energy: number;
       rewards: { coins: number; energy: number; ticket: string | null };
     }>("/api/hunt/claim", { method: "POST" }),
+  pass: () => request<PassData>("/api/pass"),
+  claimPass: (level: number, track: "free" | "premium") =>
+    request<{ level: number; track: string; rewards: PassReward }>("/api/pass/claim", {
+      method: "POST",
+      body: JSON.stringify({ level, track }),
+    }),
+  buyPass: () =>
+    request<{ dev: boolean; premium: boolean; invoice_url: string | null }>("/api/pass/buy", {
+      method: "POST",
+    }),
   useTicket: (rarity: string) =>
     request<{ plate: PlateT; left: number; coins: number }>("/api/tickets/use", {
       method: "POST",

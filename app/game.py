@@ -9,6 +9,7 @@ from app.config import settings
 from app.economy import GameError, apply_delta, lock_user, lock_users, now
 from app.energy import regenerate
 from app.hunts import register as register_hunt
+from app.passes import POINTS_SPIN
 from app.models import DailyClaim, Duel, Plate, Spin, User
 from app.plates import STAKES, PlateValue, pretty_plate, spin_plate, tier_index
 from app.progress import award_xp
@@ -76,6 +77,7 @@ async def spin(
 
     user.spins += 1
     user.best_score = max(user.best_score, plate.score)
+    user.season_points += POINTS_SPIN
     award_xp(user, 5)
     session.add(Spin(user_id=user.id, plate_id=plate.id, cost=cost))
     await bump(session, user, "spin")

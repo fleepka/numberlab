@@ -35,6 +35,7 @@ class User(Base):
     xp: Mapped[int] = mapped_column(Integer, default=0)
     level: Mapped[int] = mapped_column(Integer, default=1)
     season_points: Mapped[int] = mapped_column(Integer, default=0)
+    pass_premium: Mapped[bool] = mapped_column(Boolean, default=False)
     invites: Mapped[int] = mapped_column(Integer, default=0)
     invited_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -236,3 +237,15 @@ class UserHunt(Base):
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (UniqueConstraint("user_id", "hunt_id", name="uq_user_hunt"),)
+
+
+class PassClaim(Base):
+    __tablename__ = "pass_claims"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    level: Mapped[int] = mapped_column(Integer)
+    track: Mapped[str] = mapped_column(String(8))
+    claimed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("user_id", "level", "track", name="uq_pass_claim"),)
