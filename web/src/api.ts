@@ -13,6 +13,7 @@ import type {
   PassReward,
   PlateT,
   RatingData,
+  ShopData,
   TaskT,
   TicketT,
   Tx,
@@ -161,7 +162,17 @@ export const api = {
   joinDuel: (id: number) => request<JoinResult>(`/api/duels/${id}/join`, { method: "POST" }),
   cancelDuel: (id: number) =>
     request<{ ok: boolean; coins: number }>(`/api/duels/${id}/cancel`, { method: "POST" }),
-  shop: () => request<{ offers: Offer[] }>("/api/shop"),
+  shop: () => request<ShopData>("/api/shop"),
+  buyEnergy: (pack: string) =>
+    request<{ energy: number; coins: number; added: number }>("/api/shop/energy", {
+      method: "POST",
+      body: JSON.stringify({ pack }),
+    }),
+  buyTicket: (rarity: string) =>
+    request<{ coins: number; rarity: string }>("/api/shop/ticket", {
+      method: "POST",
+      body: JSON.stringify({ rarity }),
+    }),
   buy: (code: string) =>
     request<{ dev: boolean; invoice_url: string | null; plate?: PlateT | null }>("/api/shop/buy", {
       method: "POST",

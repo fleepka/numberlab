@@ -12,7 +12,16 @@ from app.api.serializers import plate_json
 from app.config import settings
 from app.db import get_session
 from app.models import Plate, User
-from app.shop import ShopError, fulfil_purchase, offers_for, prepare_purchase
+from app.shop import (
+    ENERGY_PACKS,
+    TICKET_PRICES,
+    ShopError,
+    buy_energy,
+    buy_ticket,
+    fulfil_purchase,
+    offers_for,
+    prepare_purchase,
+)
 from app.tg import bot, stars_invoice
 
 router = APIRouter(prefix="/api/shop", tags=["shop"])
@@ -44,8 +53,47 @@ async def shop(
             }
             for v in values
             if v.code not in taken
-        ]
+        ],
+        "energy_packs": [
+            {"code": code, "energy": item["energy"], "price": item["price"]}
+            for code, item in ENERGY_PACKS.items()
+        ],
+        "ticket_prices": TICKET_PRICES,
     }
+
+
+@router.post("/energy")
+async def buy_energy_view(
+    body: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    from app.economy import GameError
+
+    try:
+        result = await buy_energy(session, user.id, str(body.get("pack", "")))
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
+
+
+@router.post("/ticket")
+async def buy_ticket_view(
+    body: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    from app.economy import GameError
+
+    try:
+        result = await buy_ticket(session, user.id, str(body.get("rarity", "")))
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
 
 
 @router.post("/buy")

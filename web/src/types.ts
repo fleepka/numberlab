@@ -146,6 +146,18 @@ export type Offer = {
   stars: number;
 };
 
+export type EnergyPack = {
+  code: string;
+  energy: number;
+  price: number;
+};
+
+export type ShopData = {
+  offers: Offer[];
+  energy_packs: EnergyPack[];
+  ticket_prices: Record<string, number>;
+};
+
 export type CollectionT = {
   id: number;
   code: string;

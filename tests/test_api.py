@@ -384,6 +384,48 @@ async def test_nick_ticket_after_seven_days(client):
     assert early.status_code == 400
 
 
+async def test_shop_sells_energy_for_rubles(client):
+    await get_me(client, "2300")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2300))
+        user.coins = 6000
+        user.energy = 0
+        await session.commit()
+
+    response = await client.post(
+        "/api/shop/energy", headers=headers("2300"), json={"pack": "small"}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["energy"] == 10
+    assert response.json()["coins"] == 1000
+
+
+async def test_shop_sells_ticket_for_rubles(client):
+    await get_me(client, "2310")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2310))
+        user.coins = 20000
+        await session.commit()
+
+    response = await client.post(
+        "/api/shop/ticket", headers=headers("2310"), json={"rarity": "rare"}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["coins"] == 5000
+
+    listing = (await client.get("/api/tickets", headers=headers("2310"))).json()
+    counts = {item["rarity"]: item["count"] for item in listing["items"]}
+    assert counts["rare"] == 1
+
+
+async def test_shop_rejects_expensive_purchase(client):
+    await get_me(client, "2320")
+    response = await client.post(
+        "/api/shop/energy", headers=headers("2320"), json={"pack": "big"}
+    )
+    assert response.status_code == 400
+
+
 async def test_daily_once_per_day(client):
     first = await client.post("/api/daily", headers=headers("1300"))
     assert first.status_code == 200

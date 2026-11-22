@@ -1683,6 +1683,11 @@ button {
   gap: 8px;
 }
 
+.pack-value {
+  font-size: 22px;
+  font-weight: 900;
+}
+
 .stars-price {
   font-size: 12px;
   font-weight: 800;
