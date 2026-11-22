@@ -48,7 +48,7 @@ COUNTRIES: dict[str, dict] = {
     "BY": {
         "flag": "BY",
         "title": "Беларусь",
-        "regions": [f"{i:02d}" for i in range(1, 8)],
+        "regions": [str(i) for i in range(1, 8)],
         "mult": 0.8,
     },
     "UZ": {
@@ -60,10 +60,22 @@ COUNTRIES: dict[str, dict] = {
     "AE": {
         "flag": "UAE",
         "title": "ОАЭ",
-        "regions": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"],
+        "regions": [],
         "mult": 1.5,
     },
 }
+
+# Реальные форматы: сколько цифр и букв, какой длины код региона, как собирается строка.
+FORMATS: dict[str, dict] = {
+    "RU": {"tpl": "ru", "digits": 3, "letters": 3, "region": (2, 3)},
+    "KZ": {"tpl": "kz", "digits": 3, "letters": 3, "region": (2, 2)},
+    "BY": {"tpl": "by", "digits": 4, "letters": 2, "region": (1, 1)},
+    "UZ": {"tpl": "uz", "digits": 3, "letters": 3, "region": (2, 2)},
+    "AE": {"tpl": "ae", "digits": (1, 5), "letters": (1, 2), "region": (0, 0)},
+}
+
+LATIN_LETTERS = "ABCDEFGHIJKLMNPQRSTUVWXYZ"
+AE_DIGIT_MULT = {1: 600.0, 2: 120.0, 3: 20.0, 4: 4.0, 5: 1.0}
 
 COUNTRY_CODES = tuple(COUNTRIES)
 
@@ -161,19 +173,26 @@ class PlateValue:
 
 
 def is_triple(digits: str) -> bool:
-    return digits[0] == digits[1] == digits[2]
-
-
-def is_pair(digits: str) -> bool:
-    return not is_triple(digits) and (digits[0] == digits[1] or digits[1] == digits[2])
+    return len(digits) >= 3 and len(set(digits)) == 1
 
 
 def is_mirror(digits: str) -> bool:
-    return not is_triple(digits) and digits[0] == digits[2]
+    return len(digits) >= 3 and digits == digits[::-1] and len(set(digits)) > 1
+
+
+def is_pair(digits: str) -> bool:
+    if len(digits) < 2 or len(set(digits)) == 1:
+        return False
+    return any(digits[i] == digits[i + 1] for i in range(len(digits) - 1))
 
 
 def is_sequence(digits: str) -> bool:
-    return digits in _ASC or digits in _DESC
+    values = [int(char) for char in digits]
+    if len(values) < 3:
+        return False
+    up = all(values[i + 1] - values[i] == 1 for i in range(len(values) - 1))
+    down = all(values[i] - values[i + 1] == 1 for i in range(len(values) - 1))
+    return up or down
 
 
 is_palindrome = is_mirror
@@ -202,7 +221,7 @@ def explain(digits: str, letters: str, region: str) -> tuple[Factor, ...]:
 
     if letters in PRESTIGE_LETTERS:
         factors.append(Factor("Престижные буквы", 6))
-    elif letters[0] == letters[1]:
+    elif len(letters) >= 2 and letters[0] == letters[1]:
         factors.append(Factor("Повтор букв", 2))
 
     if region in PREMIUM_REGIONS:
@@ -217,13 +236,26 @@ def score(digits: str, letters: str, region: str) -> int:
     return sum(factor.points for factor in explain(digits, letters, region))
 
 
-def rarity_of(digits: str, letters: str, region: str) -> str:
+def rarity_of(digits: str, letters: str, region: str, country: str = "RU") -> str:
+    if country == "AE":
+        length = len(digits)
+        if length <= 2:
+            return "mythic"
+        if length == 3:
+            return "legendary"
+        if length == 4:
+            return "epic"
+        return "rare"
     prestige = letters in PRESTIGE_LETTERS
     if is_triple(digits):
         return "mythic"
     if prestige and region in PREMIUM_REGIONS:
         return "mythic"
     if prestige:
+        return "legendary"
+    if country in ("KZ", "UZ") and digits in SPECIAL_DIGITS:
+        return "legendary"
+    if country == "BY" and len(digits) >= 4 and is_sequence(digits):
         return "legendary"
     if digits in SPECIAL_DIGITS:
         return "epic"
@@ -242,34 +274,81 @@ def tier_index(rarity: str) -> int:
     return TIERS.index(rarity)
 
 
-def price_of(total: int, rarity: str, country: str = "RU") -> int:
+def price_of(total: int, rarity: str, country: str = "RU", digits: str = "") -> int:
     base = TIER_BASE[rarity] + SCORE_STEP[rarity] * total
     mult = COUNTRIES.get(country, COUNTRIES["RU"])["mult"]
+    if country == "AE":
+        mult *= AE_DIGIT_MULT.get(len(digits), 1.0)
     return max(100, int(round(base * mult / 100) * 100))
 
 
-def build(letters: str, digits: str, region: str, country: str = "RU") -> PlateValue:
-    if len(digits) != 3 or not digits.isdigit():
-        raise ValueError("digits must be 3 digits")
-    if len(letters) != 3 or any(char not in LETTERS for char in letters):
-        raise ValueError("letters must be 3 allowed cyrillic letters")
+_ALLOWED_LETTERS = {
+    "RU": "АВЕКМНОРСТУХ",
+    "BY": "АВЕІКМНОРСТХ",
+    "KZ": LATIN_LETTERS,
+    "UZ": LATIN_LETTERS,
+    "AE": LATIN_LETTERS,
+}
+
+
+def _check_length(value: str, spec, label: str) -> None:
+    if isinstance(spec, tuple):
+        low, high = spec
+        if not low <= len(value) <= high:
+            raise ValueError(f"{label} length must be {low}..{high}")
+    elif len(value) != spec:
+        raise ValueError(f"{label} length must be {spec}")
+
+
+def _code_of(letters: str, digits: str, region: str, template: str) -> str:
+    if template == "ru":
+        return f"{letters[0]}{digits}{letters[1:]}{region}"
+    if template == "uz":
+        return f"{region}{letters[0]}{digits}{letters[1:]}"
+    if template == "ae":
+        return f"{letters}{digits}"
+    return f"{digits}{letters}{region}"
+
+
+def build(letters: str, digits: str, region: str = "", country: str = "RU") -> PlateValue:
     data = COUNTRIES.get(country)
-    if data is None:
+    spec = FORMATS.get(country)
+    if data is None or spec is None:
         raise ValueError("unknown country")
-    if region not in data["regions"]:
-        raise ValueError("unknown region")
+
+    digits = digits.strip()
+    letters = letters.strip().upper()
+    region = region.strip()
+
+    _check_length(digits, spec["digits"], "digits")
+    _check_length(letters, spec["letters"], "letters")
+    if not digits.isdigit():
+        raise ValueError("digits must be numeric")
+    allowed = _ALLOWED_LETTERS[country]
+    if any(char not in allowed for char in letters):
+        raise ValueError("letters must be allowed")
+
+    low, high = spec["region"]
+    if low == 0 and high == 0:
+        if region:
+            raise ValueError("region must be empty")
+    else:
+        if low <= len(region) <= high and region not in data["regions"]:
+            raise ValueError("unknown region")
+        if not low <= len(region) <= high:
+            raise ValueError("bad region length")
 
     factors = explain(digits, letters, region)
     total = sum(factor.points for factor in factors)
-    rarity = rarity_of(digits, letters, region)
+    rarity = rarity_of(digits, letters, region, country)
 
     return PlateValue(
-        code=f"{letters[0]}{digits}{letters[1:]}{region}",
+        code=_code_of(letters, digits, region, spec["tpl"]),
         digits=digits,
         letters=letters,
         region=region,
         score=total,
-        price=price_of(total, rarity, country),
+        price=price_of(total, rarity, country, digits),
         rarity=rarity,
         stars=STARS_PRICE[rarity],
         factors=factors,
@@ -277,22 +356,38 @@ def build(letters: str, digits: str, region: str, country: str = "RU") -> PlateV
     )
 
 
-_CODE_RE = re.compile(r"^([АВЕКМНОРСТУХ])(\d{3})([АВЕКМНОРСТУХ]{2})(\d{2,3})$")
-
-
-def country_for_region(region: str) -> str:
-    for code, data in COUNTRIES.items():
-        if region in data["regions"]:
-            return code
-    return "RU"
+_PATTERNS = {
+    "RU": re.compile(r"^([АВЕКМНОРСТУХ])(\d{3})([АВЕКМНОРСТУХ]{2})(\d{2,3})$"),
+    "KZ": re.compile(r"^(\d{3})([A-Z]{3})(\d{2})$"),
+    "BY": re.compile(r"^(\d{4})([АВЕІКМНОРСТХ]{2})(\d)$"),
+    "UZ": re.compile(r"^(\d{2})([A-Z])(\d{3})([A-Z]{2})$"),
+    "AE": re.compile(r"^([A-Z]{1,2})(\d{1,5})$"),
+}
 
 
 def parse_code(code: str, country: str | None = None) -> PlateValue:
-    match = _CODE_RE.match(code.replace(" ", "").upper())
-    if not match:
-        raise ValueError(f"bad plate code: {code}")
-    head, digits, tail, region = match.groups()
-    return build(head + tail, digits, region, country or country_for_region(region))
+    clean = code.replace(" ", "").replace("-", "").upper()
+    candidates = [country] if country else list(FORMATS)
+
+    for candidate in candidates:
+        pattern = _PATTERNS.get(candidate)
+        match = pattern.match(clean) if pattern else None
+        if not match:
+            continue
+        groups = match.groups()
+        if candidate == "RU":
+            head, digits, tail, region = groups
+            return build(head + tail, digits, region, candidate)
+        if candidate == "UZ":
+            region, head, digits, tail = groups
+            return build(head + tail, digits, region, candidate)
+        if candidate == "AE":
+            letters, digits = groups
+            return build(letters, digits, "", candidate)
+        digits, letters, region = groups
+        return build(letters, digits, region, candidate)
+
+    raise ValueError(f"bad plate code: {code}")
 
 
 def _choice(source, rng: random.Random | None):
@@ -364,43 +459,84 @@ def _prestige_letters(rng: random.Random | None) -> str:
     return _choice(sorted(PRESTIGE_LETTERS), rng)
 
 
+def _letters_for(country: str, rng: random.Random | None) -> str:
+    spec = FORMATS[country]["letters"]
+    length = _randint(spec[0], spec[1], rng) if isinstance(spec, tuple) else spec
+    allowed = _ALLOWED_LETTERS[country]
+    return "".join(_choice(allowed, rng) for _ in range(length))
+
+
+def _digits_for(country: str, tier: str, rng: random.Random | None) -> str:
+    spec = FORMATS[country]["digits"]
+    if country == "AE":
+        length = {"mythic": 2, "legendary": 3, "epic": 4, "rare": 5, "common": 5}[tier]
+        return str(_randint(1, 9, rng)) + "".join(
+            str(_randint(0, 9, rng)) for _ in range(length - 1)
+        )
+
+    length = _randint(spec[0], spec[1], rng) if isinstance(spec, tuple) else spec
+
+    if tier == "mythic":
+        return str(_randint(0, 9, rng)) * length
+
+    if tier == "legendary":
+        if country in ("KZ", "UZ"):
+            pool = [value for value in SPECIAL_DIGITS if len(value) == length and value[0] != "0"]
+            if pool:
+                return _choice(pool, rng)
+        start = _randint(1, max(1, 10 - length), rng)
+        return "".join(str(start + index) for index in range(length))
+
+    if tier == "epic":
+        kind = _randint(0, 2, rng)
+        if kind == 0 and length >= 3:
+            head = str(_randint(1, 9, rng))
+            tail = "".join(str(_randint(0, 9, rng)) for _ in range(length - 2))
+            tail = tail.replace(head, str((int(head) + 1) % 10)) if tail else tail
+            return head + head + tail
+        if kind == 1:
+            start = _randint(1, max(1, 10 - length), rng)
+            return "".join(str(start + index) for index in range(length))
+        return str(_randint(1, 9, rng)) + "0" * (length - 1)
+
+    if tier == "rare":
+        half = length // 2
+        left = str(_randint(1, 9, rng)) + "".join(
+            str(_randint(0, 9, rng)) for _ in range(half - 1)
+        )
+        if length % 2 == 0:
+            return left + left[::-1]
+        return left + str(_randint(0, 9, rng)) + left[::-1]
+
+    return f"{_randint(1, 10 ** length - 1, rng):0{length}d}"
+
+
 def plate_for_tier(
     tier: str, rng: random.Random | None = None, country: str = "RU"
 ) -> PlateValue:
-    """Возвращает номер ровно запрошенной редкости в выбранной стране."""
+    """Возвращает номер ровно запрошенной редкости в реальном формате страны."""
     if tier not in TIERS:
         raise ValueError(f"unknown tier: {tier}")
-
     data = COUNTRIES.get(country)
     if data is None:
         raise ValueError(f"unknown country: {country}")
+
     regions = list(data["regions"])
     premium = [code for code in regions if code in PREMIUM_REGIONS]
 
-    for _ in range(200):
-        if tier == "mythic" and premium and _randint(0, 1, rng):
+    for _ in range(300):
+        digits = _digits_for(country, tier, rng)
+        letters = _letters_for(country, rng)
+        region = _choice(regions, rng) if regions else ""
+
+        if tier == "mythic" and premium and country == "RU" and _randint(0, 1, rng):
             digits = f"{_randint(0, 999, rng):03d}"
             letters = _prestige_letters(rng)
             region = _choice(premium, rng)
-        elif tier == "mythic":
-            digits = str(_randint(0, 9, rng)) * 3
-            letters = _random_letters(rng, repeat=_randint(0, 1, rng) == 1)
-            region = _choice(regions, rng)
-        elif tier == "legendary":
+
+        if tier == "legendary" and country == "RU":
+            digits = f"{_randint(0, 999, rng):03d}"
             letters = _prestige_letters(rng)
-            digits = f"{_randint(0, 999, rng):03d}"
-            region = _choice(regions, rng)
-        elif tier == "epic":
-            letters = _random_letters(rng)
-            digits = _epic_digits(rng)
-            region = _choice(regions, rng)
-        elif tier == "rare":
-            letters = _random_letters(rng)
-            digits = _mirror_digits(rng)
-            region = _choice(regions, rng)
-        else:
-            letters = _random_letters(rng)
-            digits = f"{_randint(0, 999, rng):03d}"
             region = _choice(regions, rng)
 
         try:

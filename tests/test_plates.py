@@ -69,23 +69,43 @@ def test_special_numbers_are_epic():
 
 def test_country_changes_price_and_keeps_code():
     ru = build("АВС", PLAIN, "01", "RU")
-    kz = build("АВС", PLAIN, "01", "KZ")
+    kz = build("ABC", PLAIN, "01", "KZ")
     assert ru.country == "RU"
     assert kz.country == "KZ"
     assert kz.price < ru.price
-    assert kz.code == ru.code
+
+
+def test_real_formats_per_country():
+    assert build("ABC", "123", "02", "KZ").code == "123ABC02"
+    assert build("АВ", "1234", "5", "BY").code == "1234АВ5"
+    assert build("ABC", "123", "01", "UZ").code == "01A123BC"
+    assert build("AA", "12345", "", "AE").code == "AA12345"
+
+
+def test_ae_short_numbers_are_mythic_and_costly():
+    short = build("A", "7", "", "AE")
+    long = build("Q", "12345", "", "AE")
+    assert short.rarity == "mythic"
+    assert long.rarity == "rare"
+    assert short.price > long.price
 
 
 def test_generated_plate_uses_country_regions():
-    plate = plate_for_tier("epic", country="AE")
-    assert plate.country == "AE"
-    assert plate.region in COUNTRIES["AE"]["regions"]
+    plate = plate_for_tier("epic", country="KZ")
+    assert plate.country == "KZ"
+    assert plate.region in COUNTRIES["KZ"]["regions"]
+
+    ae = plate_for_tier("epic", country="AE")
+    assert ae.country == "AE"
+    assert ae.region == ""
+    assert len(ae.digits) == 4
 
 
 def test_parse_code_with_country():
-    plate = build("АВС", PLAIN, "14", "UZ")
+    plate = build("ABC", PLAIN, "14", "UZ")
     parsed = parse_code(plate.code, "UZ")
     assert parsed.country == "UZ"
+    assert parsed.code == plate.code
     assert parsed.price == plate.price
 
 

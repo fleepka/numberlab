@@ -477,6 +477,26 @@ button {
   letter-spacing: 0.02em;
 }
 
+.plate-region-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.22em;
+  font-size: 0.62em;
+  font-weight: 900;
+  color: #1b4fa8;
+  background: #f2f7ff;
+  border-right: 2px solid #e3e3e3;
+}
+
+.plate-kz .plate-side {
+  background: #eaf6ff;
+}
+
+.plate-ae .plate-side {
+  background: #f8f1e3;
+}
+
 .plate-sm {
   font-size: 23px;
   padding: 0.22em 0.42em;

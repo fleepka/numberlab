@@ -1,6 +1,10 @@
 type Size = "sm" | "md" | "lg";
 
-const PARTS = /^(.)(\d{3})(..)(\d{2,3})$/;
+const RU = /^(.)(\d{3})(..)(\d{2,3})$/;
+const KZ = /^(\d{3})([A-Z]{3})(\d{2})$/;
+const BY = /^(\d{4})([А-ЯІ]{2})(\d)$/;
+const UZ = /^(\d{2})([A-Z])(\d{3})([A-Z]{2})$/;
+const AE = /^([A-Z]{1,2})(\d{1,5})$/;
 
 const FLAGS: Record<string, string> = {
   RU: "RUS",
@@ -9,6 +13,29 @@ const FLAGS: Record<string, string> = {
   UZ: "UZ",
   AE: "UAE",
 };
+
+function split(code: string, country: string) {
+  const clean = code.replace(/[\s-]/g, "").toUpperCase();
+  if (country === "KZ") {
+    const m = KZ.exec(clean);
+    if (m) return { head: m[1], mid: m[2], tail: "", region: m[3] };
+  }
+  if (country === "BY") {
+    const m = BY.exec(clean);
+    if (m) return { head: m[1], mid: m[2], tail: "", region: m[3] };
+  }
+  if (country === "UZ") {
+    const m = UZ.exec(clean);
+    if (m) return { head: m[1], mid: `${m[2]}${m[3]}`, tail: m[4], region: m[1], leading: true };
+  }
+  if (country === "AE") {
+    const m = AE.exec(clean);
+    if (m) return { head: m[1], mid: m[2], tail: "", region: "" };
+  }
+  const m = RU.exec(clean);
+  if (m) return { head: m[1], mid: m[2], tail: m[3], region: m[4] };
+  return null;
+}
 
 export function Plate({
   code,
@@ -23,11 +50,11 @@ export function Plate({
   country?: string;
   className?: string;
 }) {
-  const match = PARTS.exec(code.replace(/\s/g, ""));
+  const parsed = split(code, country);
   const style = glow ? { boxShadow: `0 0 34px ${glow}55, 0 0 2px ${glow}99` } : undefined;
   const flag = FLAGS[country] ?? "RUS";
 
-  if (!match) {
+  if (!parsed) {
     return (
       <div className={`plate plate-${size} ${className}`} style={style}>
         <span className="plate-fallback">{code}</span>
@@ -35,19 +62,28 @@ export function Plate({
     );
   }
 
-  const [, first, digits, tail, region] = match;
   return (
-    <div className={`plate plate-${size} ${className}`} style={style}>
+    <div className={`plate plate-${size} plate-${country.toLowerCase()} ${className}`} style={style}>
+      {parsed.leading && parsed.region && (
+        <span className="plate-region-block">{parsed.region}</span>
+      )}
       <div className="plate-main">
-        <span className="plate-letter">{first}</span>
-        <span className="plate-digits">{digits}</span>
-        <span className="plate-letter">{tail}</span>
+        <span className="plate-letter">{parsed.head}</span>
+        <span className="plate-digits">{parsed.mid}</span>
+        {parsed.tail && <span className="plate-letter">{parsed.tail}</span>}
       </div>
-      <div className="plate-side">
-        <span className="plate-rus">{flag}</span>
-        <span className="plate-flag" aria-hidden="true" />
-        <span className="plate-region">{region}</span>
-      </div>
+      {parsed.region && !parsed.leading && (
+        <div className="plate-side">
+          <span className="plate-rus">{flag}</span>
+          <span className="plate-flag" aria-hidden="true" />
+          <span className="plate-region">{parsed.region}</span>
+        </div>
+      )}
+      {country === "AE" && (
+        <div className="plate-side">
+          <span className="plate-rus">UAE</span>
+        </div>
+      )}
     </div>
   );
 }
