@@ -93,6 +93,9 @@ export function SpinView({
   useEffect(() => {
     setPreview(previewCode(country));
     setResult(null);
+    if (country !== "RU") {
+      setStake((current) => (current === "divine" ? "mythic" : current));
+    }
   }, [country]);
 
   useEffect(() => {
@@ -271,7 +274,9 @@ export function SpinView({
           <span className="muted small">{rarityLabel(stake)}</span>
         </div>
         <div className="chips chips-grid">
-          {Object.entries(stakes).map(([tier, tierPrice]) => (
+          {Object.entries(stakes)
+            .filter(([tier]) => tier !== "divine" || country === "RU")
+            .map(([tier, tierPrice]) => (
             <button
               key={tier}
               className={stake === tier ? "chip chip-active" : "chip"}

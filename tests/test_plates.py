@@ -103,8 +103,9 @@ def test_ae_short_numbers_are_mythic_and_costly():
     short = build("A", "7", "", "AE")
     long = build("Q", "12345", "", "AE")
     assert short.rarity == "mythic"
-    assert long.rarity == "rare"
+    assert long.rarity == "common"
     assert short.price > long.price
+    assert short.price <= 2_000_000
 
 
 def test_generated_plate_uses_country_regions():
@@ -115,7 +116,7 @@ def test_generated_plate_uses_country_regions():
     ae = plate_for_tier("epic", country="AE")
     assert ae.country == "AE"
     assert ae.region == ""
-    assert len(ae.digits) == 4
+    assert len(ae.digits) == 3
 
 
 def test_parse_code_with_country():
@@ -159,7 +160,34 @@ def test_paid_plate_is_mostly_below_stake():
 def test_factors_explain_price():
     plate = build("АМР", TRIPLE, "77")
     assert plate.score == sum(factor.points for factor in plate.factors)
-    assert plate.rarity == "mythic"
+    assert plate.rarity == "divine"
+    assert plate.price > 50_000_000
     assert any(factor.title == "Три одинаковые цифры" for factor in plate.factors)
     assert any(factor.title == "Престижные буквы" for factor in plate.factors)
     assert any(factor.title == "Премиальный регион" for factor in plate.factors)
+
+
+def test_belarus_rare_generation():
+    plate = plate_for_tier("rare", country="BY")
+    assert plate.rarity == "rare"
+    assert len(plate.code) == 7
+
+
+def test_ae_prices_are_capped():
+    for tier in ("legendary", "mythic"):
+        for _ in range(10):
+            plate = plate_for_tier(tier, country="AE")
+            assert plate.price <= 2_000_000
+
+
+def test_divine_tier_is_available_for_russia():
+    plate = plate_for_tier("divine")
+    assert plate.rarity == "divine"
+    assert plate.price > 50_000_000
+    assert "divine" in STAKES
+
+def test_divine_spin_stays_above_threshold():
+    for _ in range(20):
+        plate = spin_plate("divine")
+        assert plate.rarity == "divine"
+        assert plate.price > 50_000_000

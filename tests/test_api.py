@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from app.db import SessionLocal
 from app.energy import ENERGY_MAX
 from app.models import Collection, Hunt, Plate, Ticket, User, UserHunt
+from app.plates import STAKES
 from app.shop import offers_for
 
 
@@ -53,11 +54,11 @@ async def test_spin_costs_coins_without_energy(client):
     async with SessionLocal() as session:
         user = await session.scalar(select(User).where(User.tg_id == 1101))
         user.energy = 0
-        user.coins = 5000
+        user.coins = STAKES["common"] + 3000
         await session.commit()
 
     paid = (await client.post("/api/spin?tier=common", headers=headers("1101"))).json()
-    assert paid["cost"] == 2000
+    assert paid["cost"] == STAKES["common"]
     assert paid["coins"] == 3000
     assert paid["plate"]["rarity"] == "common"
 
@@ -444,7 +445,7 @@ async def test_spin_currency_rubles_keeps_energy(client):
     await get_me(client, "2320")
     async with SessionLocal() as session:
         user = await session.scalar(select(User).where(User.tg_id == 2320))
-        user.coins = 5000
+        user.coins = STAKES["common"]
         user.energy = ENERGY_MAX
         await session.commit()
 
@@ -453,7 +454,7 @@ async def test_spin_currency_rubles_keeps_energy(client):
     )
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["cost"] == 2000
+    assert body["cost"] == STAKES["common"]
     assert body["energy"] == ENERGY_MAX
 
 

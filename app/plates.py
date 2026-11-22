@@ -62,7 +62,7 @@ COUNTRIES: dict[str, dict] = {
         "flag": "UAE",
         "title": "ОАЭ",
         "regions": [],
-        "mult": 1.5,
+        "mult": 0.5,
     },
 }
 
@@ -76,7 +76,9 @@ FORMATS: dict[str, dict] = {
 }
 
 LATIN_LETTERS = "ABCDEFGHIJKLMNPQRSTUVWXYZ"
-AE_DIGIT_MULT = {1: 600.0, 2: 120.0, 3: 20.0, 4: 4.0, 5: 1.0}
+# Потолок рынка: в ОАЭ короткие номера дорогие, но не уходят в сотни миллионов.
+PRICE_CAP = {"AE": 2_000_000}
+DIVINE_MIN = 50_000_000
 
 # «Мода»: раз в неделю один регион стоит дороже — как хайп вокруг серий на рынке.
 HYPE_ROTATION = ["77", "97", "99", "50", "01", "23", "66", "78"]
@@ -126,7 +128,7 @@ SPECIAL_DIGITS: dict[str, tuple[str, int]] = {
     "888": ("Три восьмёрки", 0),
 }
 
-TIERS: tuple[str, ...] = ("common", "rare", "epic", "legendary", "mythic")
+TIERS: tuple[str, ...] = ("common", "rare", "epic", "legendary", "mythic", "divine")
 
 RARITY_LABELS = {
     "common": "Обычный",
@@ -134,22 +136,25 @@ RARITY_LABELS = {
     "epic": "Эпический",
     "legendary": "Легендарный",
     "mythic": "Мифический",
+    "divine": "Божественный",
 }
 
 TIER_BASE = {
-    "common": 700,
-    "rare": 4200,
-    "epic": 26000,
-    "legendary": 150000,
-    "mythic": 700000,
+    "common": 15_000,
+    "rare": 90_000,
+    "epic": 320_000,
+    "legendary": 1_500_000,
+    "mythic": 3_500_000,
+    "divine": 52_000_000,
 }
 
 SCORE_STEP = {
-    "common": 120,
-    "rare": 350,
-    "epic": 1200,
-    "legendary": 5000,
-    "mythic": 15000,
+    "common": 1_500,
+    "rare": 10_000,
+    "epic": 35_000,
+    "legendary": 200_000,
+    "mythic": 350_000,
+    "divine": 800_000,
 }
 
 STARS_PRICE = {
@@ -158,15 +163,17 @@ STARS_PRICE = {
     "epic": 25,
     "legendary": 100,
     "mythic": 400,
+    "divine": 1_500,
 }
 
 # Ставка платной прокрутки за номер выбранной редкости.
 STAKES = {
-    "common": 2000,
-    "rare": 8000,
-    "epic": 40000,
-    "legendary": 250000,
-    "mythic": 1000000,
+    "common": 18_000,
+    "rare": 140_000,
+    "epic": 560_000,
+    "legendary": 2_700_000,
+    "mythic": 6_800_000,
+    "divine": 63_000_000,
 }
 
 # Сколько энергии стоит прокрутка выбранной редкости.
@@ -176,6 +183,7 @@ ENERGY_COST = {
     "epic": 16,
     "legendary": 64,
     "mythic": 256,
+    "divine": 512,
 }
 
 _ASC = {f"{i}{i + 1}{i + 2}" for i in range(1, 8)}
@@ -272,15 +280,11 @@ def score(digits: str, letters: str, region: str) -> int:
 
 def rarity_of(digits: str, letters: str, region: str, country: str = "RU") -> str:
     if country == "AE":
-        length = len(digits)
-        if length <= 2:
-            return "mythic"
-        if length == 3:
-            return "legendary"
-        if length == 4:
-            return "epic"
-        return "rare"
+        return {1: "mythic", 2: "legendary", 3: "epic", 4: "rare"}.get(len(digits), "common")
+
     prestige = letters in PRESTIGE_LETTERS
+    if is_triple(digits) and prestige and region in PREMIUM_REGIONS:
+        return "divine"
     if is_triple(digits):
         return "mythic"
     if prestige and region in PREMIUM_REGIONS:
@@ -293,10 +297,10 @@ def rarity_of(digits: str, letters: str, region: str, country: str = "RU") -> st
         return "legendary"
     if digits in SPECIAL_DIGITS:
         return "epic"
-    if is_pair(digits) or is_sequence(digits) or is_round(digits):
-        return "epic"
     if is_mirror(digits):
         return "rare"
+    if is_pair(digits) or is_sequence(digits) or is_round(digits):
+        return "epic"
     return "common"
 
 
@@ -313,12 +317,14 @@ def price_of(
 ) -> int:
     base = TIER_BASE[rarity] + SCORE_STEP[rarity] * total
     mult = COUNTRIES.get(country, COUNTRIES["RU"])["mult"]
-    if country == "AE":
-        mult *= AE_DIGIT_MULT.get(len(digits), 1.0)
     if country == "RU" and region and region == hype_region():
         mult *= HYPE_MULT
     mult *= premium_multiplier(digits, country)
-    return max(100, int(round(base * mult / 100) * 100))
+    value = base * mult
+    cap = PRICE_CAP.get(country)
+    if cap is not None:
+        value = min(value, cap)
+    return max(100, int(round(value / 100) * 100))
 
 
 _ALLOWED_LETTERS = {
@@ -380,6 +386,11 @@ def build(letters: str, digits: str, region: str = "", country: str = "RU") -> P
     factors = explain(digits, letters, region)
     total = sum(factor.points for factor in factors)
     rarity = rarity_of(digits, letters, region, country)
+    price = price_of(total, rarity, country, digits, region)
+
+    if price > DIVINE_MIN and rarity != "divine":
+        rarity = "divine"
+        price = price_of(total, rarity, country, digits, region)
 
     return PlateValue(
         code=_code_of(letters, digits, region, spec["tpl"]),
@@ -387,7 +398,7 @@ def build(letters: str, digits: str, region: str = "", country: str = "RU") -> P
         letters=letters,
         region=region,
         score=total,
-        price=price_of(total, rarity, country, digits, region),
+        price=price,
         rarity=rarity,
         stars=STARS_PRICE[rarity],
         factors=factors,
@@ -508,7 +519,7 @@ def _letters_for(country: str, rng: random.Random | None) -> str:
 def _digits_for(country: str, tier: str, rng: random.Random | None) -> str:
     spec = FORMATS[country]["digits"]
     if country == "AE":
-        length = {"mythic": 2, "legendary": 3, "epic": 4, "rare": 5, "common": 5}[tier]
+        length = {"common": 5, "rare": 4, "epic": 3, "legendary": 2, "mythic": 1}.get(tier, 5)
         return str(_randint(1, 9, rng)) + "".join(
             str(_randint(0, 9, rng)) for _ in range(length - 1)
         )
@@ -560,6 +571,18 @@ def plate_for_tier(
     if data is None:
         raise ValueError(f"unknown country: {country}")
 
+    if tier == "divine":
+        if country != "RU":
+            raise ValueError("Божественные номера доступны только для России")
+        for _ in range(80):
+            digits = str(_randint(0, 9, rng)) * 3
+            letters = _prestige_letters(rng)
+            region = _choice(sorted(PREMIUM_REGIONS), rng)
+            plate = build(letters, digits, region, country)
+            if plate.rarity == "divine":
+                return plate
+        raise RuntimeError("не удалось собрать номер редкости divine")
+
     regions = list(data["regions"])
     premium = [code for code in regions if code in PREMIUM_REGIONS]
 
@@ -605,6 +628,8 @@ def spin_plate(
     plate = plate_for_tier(tier, rng, country)
     multiplier = value_multiplier(rng)
     price = max(100, int(round(plate.price * multiplier / 100) * 100))
+    if plate.rarity == "divine":
+        price = max(price, DIVINE_MIN + 100_000)
     return replace(plate, price=price)
 
 
@@ -617,7 +642,7 @@ def pretty_plate(rng: random.Random | None = None) -> PlateValue:
     r = rng or random.Random(secrets.randbits(64))
     kind = r.choices(
         ["triple", "prestige", "pair", "sequence", "mirror", "plain"],
-        weights=[2, 2, 14, 10, 14, 58],
+        weights=[6, 7, 16, 12, 16, 43],
     )[0]
 
     if kind == "triple":

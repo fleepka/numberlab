@@ -6,9 +6,10 @@ export const RARITY: Record<string, RarityMeta> = {
   epic: { label: "Эпический", color: "#b07cff" },
   legendary: { label: "Легендарный", color: "#ffc247" },
   mythic: { label: "Мифический", color: "#ff5c7a" },
+  divine: { label: "Божественный", color: "#ff5ce1" },
 };
 
-export const RARITY_ORDER = ["common", "rare", "epic", "legendary", "mythic"];
+export const RARITY_ORDER = ["common", "rare", "epic", "legendary", "mythic", "divine"];
 
 export function rarityColor(key: string): string {
   return RARITY[key]?.color ?? RARITY.common.color;
