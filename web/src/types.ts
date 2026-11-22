@@ -36,6 +36,15 @@ export type UserT = {
   streak: number;
 };
 
+export type ChatMessage = {
+  id: number;
+  user_id: number;
+  username: string | null;
+  first_name: string | null;
+  text: string;
+  created_at: string;
+};
+
 export type PassReward = {
   coins: number;
   gems: number;

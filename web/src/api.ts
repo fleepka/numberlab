@@ -1,4 +1,5 @@
 import type {
+  ChatMessage,
   CollectionT,
   DuelT,
   FriendsData,
@@ -127,6 +128,9 @@ export const api = {
       rewards: { coins: number; energy: number; ticket: string | null };
     }>("/api/hunt/claim", { method: "POST" }),
   pass: () => request<PassData>("/api/pass"),
+  chat: (after = 0) => request<{ items: ChatMessage[] }>(`/api/chat?after=${after}`),
+  sendMessage: (text: string) =>
+    request<{ id: number }>("/api/chat", { method: "POST", body: JSON.stringify({ text }) }),
   claimPass: (level: number, track: "free" | "premium") =>
     request<{ level: number; track: string; rewards: PassReward }>("/api/pass/claim", {
       method: "POST",

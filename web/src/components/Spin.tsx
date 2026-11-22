@@ -14,6 +14,7 @@ const LINKS = [
   { id: "duels", label: "Дуэли", hint: "1 на 1" },
   { id: "tickets", label: "Билеты", hint: "прокрутка" },
   { id: "pass", label: "Пропуск", hint: "награды" },
+  { id: "chat", label: "Чат", hint: "общий" },
 ] as const;
 
 type NextTab = (typeof LINKS)[number]["id"] | "garage";

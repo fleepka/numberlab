@@ -11,6 +11,8 @@ from app.api.deps import current_user
 from app.api.serializers import plate_json, tx_json, user_json
 from app.db import get_session
 from app.config import settings
+from app.chat import history as chat_history
+from app.chat import send as send_message
 from app.craft import craft
 from app.collections import catalog as collections_catalog
 from app.collections import claim as claim_collection
@@ -258,6 +260,30 @@ async def rating_view(
         "items": await leaderboard(session, period=period),
         "me": await position(session, user.id, period),
     }
+
+
+@router.get("/chat")
+async def chat_view(
+    after: int = 0,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return {"items": await chat_history(session, after)}
+
+
+@router.post("/chat")
+async def chat_post(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        message = await send_message(session, user, str(payload.get("text", "")))
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return {"id": message.id}
 
 
 @router.get("/pass")

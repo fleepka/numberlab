@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, tg } from "./api";
+import { ChatView } from "./components/Chat";
 import { CollectionsView } from "./components/Collections";
 import { DuelsView } from "./components/Duels";
 import { FriendsView } from "./components/Friends";
@@ -25,6 +26,7 @@ type Tab =
   | "friends"
   | "tickets"
   | "pass"
+  | "chat"
   | "profile";
 
 const NAV: { id: Tab; label: string }[] = [
@@ -48,6 +50,7 @@ const ICONS: Record<Tab, string> = {
   friends: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20a7 7 0 0 1 14 0M17 12a3 3 0 1 0 0-6M18 20a6 6 0 0 0-2-4.5",
   tickets: "M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4zM9 6v8",
   pass: "M5 4h14v16H5zM9 9h6M9 13h6M9 17h3",
+  chat: "M4 6h16v10H9l-5 4V6z",
   profile: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
 };
 
@@ -165,6 +168,7 @@ export default function App() {
         {tab === "tasks" && <TasksView user={me.user} refresh={refresh} notify={notify} />}
         {tab === "tickets" && <TicketsView refresh={refresh} notify={notify} />}
         {tab === "pass" && <PassView refresh={refresh} notify={notify} />}
+        {tab === "chat" && <ChatView selfId={me.user.id} notify={notify} />}
         {tab === "rating" && <RatingView selfId={me.user.id} notify={notify} />}
         {tab === "friends" && <FriendsView selfId={me.user.id} notify={notify} />}
         {tab === "profile" && (

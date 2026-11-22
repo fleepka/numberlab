@@ -343,6 +343,26 @@ async def test_pass_premium_branch_locked_until_bought(client):
     assert unlocked.status_code == 200
 
 
+async def test_chat_posts_and_lists(client):
+    sent = await client.post("/api/chat", headers=headers("2100"), json={"text": "Привет"})
+    assert sent.status_code == 200
+
+    items = (await client.get("/api/chat", headers=headers("2100"))).json()["items"]
+    assert items[-1]["text"] == "Привет"
+
+
+async def test_chat_rejects_links_and_flood(client):
+    link = await client.post(
+        "/api/chat", headers=headers("2110"), json={"text": "https://spam.example"}
+    )
+    assert link.status_code == 400
+
+    first = await client.post("/api/chat", headers=headers("2111"), json={"text": "раз"})
+    assert first.status_code == 200
+    second = await client.post("/api/chat", headers=headers("2111"), json={"text": "два"})
+    assert second.status_code == 400
+
+
 async def test_daily_once_per_day(client):
     first = await client.post("/api/daily", headers=headers("1300"))
     assert first.status_code == 200
