@@ -1,16 +1,14 @@
 export type RarityMeta = { label: string; color: string };
 
 export const RARITY: Record<string, RarityMeta> = {
-  common: { label: "Обычный", color: "#8b93a3" },
-  uncommon: { label: "Необычный", color: "#2dd4bf" },
-  rare: { label: "Редкий", color: "#38bdf8" },
-  epic: { label: "Эпический", color: "#a96bff" },
-  legendary: { label: "Легендарный", color: "#ffc44d" },
-  mythic: { label: "Мифический", color: "#ff6bd6" },
-  unique: { label: "Уникальный", color: "#ff5c7a" },
+  common: { label: "Обычный", color: "#9aa0ab" },
+  rare: { label: "Редкий", color: "#4da3ff" },
+  epic: { label: "Эпический", color: "#b07cff" },
+  legendary: { label: "Легендарный", color: "#ffc247" },
+  mythic: { label: "Мифический", color: "#ff5c7a" },
 };
 
-export const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", "mythic", "unique"];
+export const RARITY_ORDER = ["common", "rare", "epic", "legendary", "mythic"];
 
 export function rarityColor(key: string): string {
   return RARITY[key]?.color ?? RARITY.common.color;

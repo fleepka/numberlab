@@ -646,6 +646,19 @@ button {
   color: var(--muted);
 }
 
+.stake-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stake-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .energy-line span:first-child {
   color: var(--mint);
 }

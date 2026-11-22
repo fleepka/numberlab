@@ -144,6 +144,7 @@ export default function App() {
         {tab === "spin" && (
           <SpinView
             user={me.user}
+            stakes={me.stakes}
             refresh={refresh}
             notify={notify}
             onNavigate={(next) => setTab(next)}

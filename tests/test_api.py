@@ -47,11 +47,24 @@ async def test_spin_costs_coins_without_energy(client):
     async with SessionLocal() as session:
         user = await session.scalar(select(User).where(User.tg_id == 1101))
         user.energy = 0
+        user.coins = 5000
         await session.commit()
 
-    paid = (await client.post("/api/spin", headers=headers("1101"))).json()
-    assert paid["cost"] == 50
-    assert paid["coins"] == 1450
+    paid = (await client.post("/api/spin?tier=common", headers=headers("1101"))).json()
+    assert paid["cost"] == 2000
+    assert paid["coins"] == 3000
+    assert paid["plate"]["rarity"] == "common"
+
+
+async def test_paid_spin_needs_enough_money(client):
+    await get_me(client, "1102")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1102))
+        user.energy = 0
+        await session.commit()
+
+    response = await client.post("/api/spin?tier=mythic", headers=headers("1102"))
+    assert response.status_code == 400
 
 
 async def test_sell_plate_credits_exactly_price(client):

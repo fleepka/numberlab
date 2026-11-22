@@ -9,7 +9,7 @@ from app.config import settings
 from app.economy import GameError, apply_delta, lock_user, lock_users, now
 from app.energy import regenerate
 from app.models import DailyClaim, Duel, Plate, Spin, User
-from app.plates import PlateValue, random_plate, tier_index
+from app.plates import STAKES, PlateValue, pretty_plate, spin_plate, tier_index
 from app.progress import award_xp
 from app.tasks import bump
 
@@ -38,7 +38,7 @@ async def create_unique_plate(
     owner_id: int,
     *,
     source: str,
-    factory=random_plate,
+    factory=pretty_plate,
 ) -> Plate:
     for _ in range(8):
         value = factory()
@@ -51,7 +51,9 @@ async def create_unique_plate(
     raise GameError("не удалось подобрать свободный номер")
 
 
-async def spin(session: AsyncSession, user_id: int) -> tuple[Plate, int]:
+async def spin(
+    session: AsyncSession, user_id: int, stake: str | None = None
+) -> tuple[Plate, int, str]:
     user = await lock_user(session, user_id)
     if user.is_banned:
         raise GameError("аккаунт заблокирован")
@@ -60,13 +62,16 @@ async def spin(session: AsyncSession, user_id: int) -> tuple[Plate, int]:
     if user.energy > 0:
         user.energy -= 1
         cost = 0
-    elif user.coins >= settings.spin_cost:
-        await apply_delta(session, user, -settings.spin_cost, "spin")
-        cost = settings.spin_cost
+        tier = ""
+        factory = pretty_plate
     else:
-        raise GameError("энергия закончилась: подожди восстановления")
-
-    plate = await create_unique_plate(session, user.id, source="spin")
+        tier = stake if stake in STAKES else "common"
+        cost = STAKES[tier]
+        if user.coins < cost:
+            raise GameError("не хватает рублей на такую прокрутку")
+        await apply_delta(session, user, -cost, "spin", ref=tier)
+        factory = lambda: spin_plate(tier)  # noqa: E731
+    plate = await create_unique_plate(session, user.id, source="spin", factory=factory)
 
     user.spins += 1
     user.best_score = max(user.best_score, plate.score)
@@ -75,7 +80,7 @@ async def spin(session: AsyncSession, user_id: int) -> tuple[Plate, int]:
     await bump(session, user, "spin")
     if tier_index(plate.rarity) >= tier_index("rare"):
         await bump(session, user, "rare")
-    return plate, cost
+    return plate, cost, tier
 
 
 async def sell_plate(session: AsyncSession, user_id: int, plate_id: int) -> int:

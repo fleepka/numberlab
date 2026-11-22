@@ -28,16 +28,19 @@ function previewCode(): string {
 
 export function SpinView({
   user,
+  stakes,
   refresh,
   notify,
   onNavigate,
 }: {
   user: UserT;
+  stakes: Record<string, number>;
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
   onNavigate?: (tab: NextTab) => void;
 }) {
   const [rolling, setRolling] = useState(false);
+  const [stake, setStake] = useState("common");
   const [preview, setPreview] = useState(previewCode);
   const [result, setResult] = useState<PlateT | null>(null);
   const [selling, setSelling] = useState(false);
@@ -65,12 +68,12 @@ export function SpinView({
   }, []);
 
   const free = user.energy > 0;
-  const cost = free ? 0 : 50;
+  const cost = free ? 0 : stakes[stake] ?? 0;
 
   async function roll() {
     if (rolling) return;
     if (!free && user.coins < cost) {
-      notify("Энергии нет, а монет на крутку не хватает", "err");
+      notify("Не хватает рублей на такую прокрутку", "err");
       return;
     }
 
@@ -80,7 +83,7 @@ export function SpinView({
     const started = Date.now();
 
     try {
-      const response = await api.spin();
+      const response = await api.spin(stake);
       const wait = Math.max(0, 900 - (Date.now() - started));
       await new Promise((resolve) => setTimeout(resolve, wait));
       setPreview(response.plate.code);
@@ -172,6 +175,26 @@ export function SpinView({
           {selling ? "…" : "Продать"}
         </button>
       </div>
+
+      {!free && (
+        <div className="stake-block">
+          <div className="stake-head">
+            <span className="muted small">Что крутим</span>
+            <span className="muted small">энергии нет — платим рублями</span>
+          </div>
+          <div className="chips">
+            {Object.entries(stakes).map(([tier, price]) => (
+              <button
+                key={tier}
+                className={stake === tier ? "chip chip-active" : "chip"}
+                onClick={() => setStake(tier)}
+              >
+                {rarityLabel(tier)} · {money(price)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button className="btn btn-primary btn-lg" onClick={roll} disabled={rolling}>
         {rolling ? "Крутим…" : free ? "Крутить · ⚡1" : `Крутить · ${money(cost)}`}

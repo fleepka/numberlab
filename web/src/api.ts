@@ -57,11 +57,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   me: () => request<MeResponse>("/api/me"),
-  spin: () =>
-    request<{ plate: PlateT; cost: number; coins: number; energy: number; energy_in: number }>(
-      "/api/spin",
-      { method: "POST" },
-    ),
+  spin: (tier?: string) =>
+    request<{
+      plate: PlateT;
+      cost: number;
+      tier: string;
+      coins: number;
+      energy: number;
+      energy_in: number;
+    }>(tier ? `/api/spin?tier=${tier}` : "/api/spin", { method: "POST" }),
   daily: () =>
     request<{ amount: number; coins: number; streak: number }>("/api/daily", { method: "POST" }),
   garage: () => request<{ plates: PlateT[] }>("/api/garage"),

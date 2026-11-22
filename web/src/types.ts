@@ -40,6 +40,7 @@ export type MeResponse = {
   user: UserT;
   garage_count: number;
   top: PlateT[];
+  stakes: Record<string, number>;
 };
 
 export type DuelT = {

@@ -1,7 +1,8 @@
 """Генерация, классификация и оценка номерных знаков.
 
-Модуль без внешних зависимостей. Редкость и цена — детерминированная функция
-от самого номера, поэтому их можно объяснить игроку и проверить тестами.
+Редкость определяется правилами по самому номеру: три одинаковые цифры и
+престижные буквы в премиальном регионе — мифические, палиндромы — редкие и так далее.
+Цена — детерминированная функция от редкости и набора факторов.
 """
 
 from __future__ import annotations
@@ -31,47 +32,50 @@ MAJOR_REGIONS = {
     "01", "02", "03", "50", "90", "102", "116", "150", "190", "199", "777", "797", "799", "977",
 }
 
-TIERS: tuple[str, ...] = (
-    "common",
-    "uncommon",
-    "rare",
-    "epic",
-    "legendary",
-    "mythic",
-    "unique",
-)
+PRESTIGE_LETTERS = {"АМР", "АУЕ", "ЕКХ", "МВД", "ФСБ", "КГБ", "СВР", "ОМП"}
+
+TIERS: tuple[str, ...] = ("common", "rare", "epic", "legendary", "mythic")
 
 RARITY_LABELS = {
     "common": "Обычный",
-    "uncommon": "Необычный",
     "rare": "Редкий",
     "epic": "Эпический",
     "legendary": "Легендарный",
     "mythic": "Мифический",
-    "unique": "Уникальный",
 }
 
 TIER_BASE = {
-    "common": 100,
-    "uncommon": 250,
-    "rare": 600,
-    "epic": 1500,
-    "legendary": 3500,
-    "mythic": 8000,
-    "unique": 20000,
+    "common": 700,
+    "rare": 4200,
+    "epic": 26000,
+    "legendary": 150000,
+    "mythic": 700000,
+}
+
+SCORE_STEP = {
+    "common": 120,
+    "rare": 350,
+    "epic": 1200,
+    "legendary": 5000,
+    "mythic": 15000,
 }
 
 STARS_PRICE = {
     "common": 1,
-    "uncommon": 2,
     "rare": 5,
-    "epic": 10,
-    "legendary": 25,
-    "mythic": 60,
-    "unique": 150,
+    "epic": 25,
+    "legendary": 100,
+    "mythic": 400,
 }
 
-SCORE_STEP = 50
+# Ставка платной прокрутки за номер выбранной редкости.
+STAKES = {
+    "common": 2000,
+    "rare": 8000,
+    "epic": 40000,
+    "legendary": 250000,
+    "mythic": 1000000,
+}
 
 _ASC = {f"{i}{i + 1}{i + 2}" for i in range(1, 8)}
 _DESC = {f"{i}{i - 1}{i - 2}" for i in range(3, 10)}
@@ -100,26 +104,47 @@ class PlateValue:
         return RARITY_LABELS[self.rarity]
 
 
+def is_triple(digits: str) -> bool:
+    return digits[0] == digits[1] == digits[2]
+
+
+def is_pair(digits: str) -> bool:
+    return not is_triple(digits) and (digits[0] == digits[1] or digits[1] == digits[2])
+
+
+def is_mirror(digits: str) -> bool:
+    return not is_triple(digits) and digits[0] == digits[2]
+
+
+def is_sequence(digits: str) -> bool:
+    return digits in _ASC or digits in _DESC
+
+
+is_palindrome = is_mirror
+
+
+def is_round(digits: str) -> bool:
+    return digits.endswith("00") or digits.startswith("00")
+
+
 def explain(digits: str, letters: str, region: str) -> tuple[Factor, ...]:
     factors: list[Factor] = []
     d = digits
 
-    if d[0] == d[1] == d[2]:
+    if is_triple(d):
         factors.append(Factor("Три одинаковые цифры", 9))
-    elif d in _ASC:
-        factors.append(Factor("Возрастающая последовательность", 5))
-    elif d in _DESC:
-        factors.append(Factor("Убывающая последовательность", 4))
-    elif d[0] == d[2]:
-        factors.append(Factor("Палиндром", 4))
-    elif d.endswith("00"):
-        factors.append(Factor("Круглое число", 4))
-    elif d.startswith("00"):
-        factors.append(Factor("Ведущие нули", 3))
-    elif d[0] == d[1] or d[1] == d[2]:
-        factors.append(Factor("Пара одинаковых цифр", 3))
+    elif is_mirror(d):
+        factors.append(Factor("Зеркало", 5))
+    elif is_pair(d):
+        factors.append(Factor("Пара одинаковых цифр", 4))
+    elif is_sequence(d):
+        factors.append(Factor("Последовательность", 4))
+    elif is_round(d):
+        factors.append(Factor("Круглое число", 3))
 
-    if letters[0] == letters[1]:
+    if letters in PRESTIGE_LETTERS:
+        factors.append(Factor("Престижные буквы", 6))
+    elif letters[0] == letters[1]:
         factors.append(Factor("Повтор букв", 2))
 
     if region in PREMIUM_REGIONS:
@@ -134,44 +159,31 @@ def score(digits: str, letters: str, region: str) -> int:
     return sum(factor.points for factor in explain(digits, letters, region))
 
 
-def tier_of(total: int) -> str:
-    if total >= 14:
-        return "unique"
-    if total >= 12:
+def rarity_of(digits: str, letters: str, region: str) -> str:
+    prestige = letters in PRESTIGE_LETTERS
+    if is_triple(digits):
         return "mythic"
-    if total >= 9:
+    if prestige and region in PREMIUM_REGIONS:
+        return "mythic"
+    if prestige:
         return "legendary"
-    if total >= 6:
+    if is_pair(digits) or is_sequence(digits) or is_round(digits):
         return "epic"
-    if total >= 4:
+    if is_mirror(digits):
         return "rare"
-    if total >= 2:
-        return "uncommon"
     return "common"
+
+
+def tier_of(digits: str, letters: str, region: str) -> str:
+    return rarity_of(digits, letters, region)
 
 
 def tier_index(rarity: str) -> int:
     return TIERS.index(rarity)
 
 
-def is_triple(digits: str) -> bool:
-    return digits[0] == digits[1] == digits[2]
-
-
-def is_pair(digits: str) -> bool:
-    return not is_triple(digits) and (digits[0] == digits[1] or digits[1] == digits[2])
-
-
-def is_palindrome(digits: str) -> bool:
-    return not is_triple(digits) and digits[0] == digits[2]
-
-
-def is_sequence(digits: str) -> bool:
-    return digits in _ASC or digits in _DESC
-
-
 def price_of(total: int, rarity: str) -> int:
-    return TIER_BASE[rarity] + SCORE_STEP * total
+    return TIER_BASE[rarity] + SCORE_STEP[rarity] * total
 
 
 def build(letters: str, digits: str, region: str) -> PlateValue:
@@ -184,7 +196,7 @@ def build(letters: str, digits: str, region: str) -> PlateValue:
 
     factors = explain(digits, letters, region)
     total = sum(factor.points for factor in factors)
-    rarity = tier_of(total)
+    rarity = rarity_of(digits, letters, region)
 
     return PlateValue(
         code=f"{letters[0]}{digits}{letters[1:]}{region}",
@@ -210,58 +222,164 @@ def parse_code(code: str) -> PlateValue:
     return build(head + tail, digits, region)
 
 
-def _random_letters(rng: random.Random | None = None, repeat: bool = False) -> str:
+def _choice(source, rng: random.Random | None):
     if rng is None:
-        if repeat:
-            head = secrets.choice(LETTERS)
-            return head + head + secrets.choice(LETTERS)
-        return "".join(secrets.choice(LETTERS) for _ in range(3))
+        return secrets.choice(list(source))
+    return rng.choice(list(source))
+
+
+def _randint(low: int, high: int, rng: random.Random | None) -> int:
+    if rng is None:
+        return low + secrets.randbelow(high - low + 1)
+    return rng.randint(low, high)
+
+
+def _random_letters(rng: random.Random | None = None, repeat: bool = False) -> str:
     if repeat:
-        head = rng.choice(LETTERS)
-        return head + head + rng.choice(LETTERS)
-    return "".join(rng.choice(LETTERS) for _ in range(3))
+        head = _choice(LETTERS, rng)
+        return head + head + _choice(LETTERS, rng)
+    return "".join(_choice(LETTERS, rng) for _ in range(3))
 
 
 def _random_region(rng: random.Random | None = None, biased: bool = False) -> str:
-    if rng is None:
-        if biased and secrets.randbelow(100) < 15:
-            return secrets.choice(sorted(PREMIUM_REGIONS))
-        return secrets.choice(REGIONS)
-    roll = rng.random()
-    if biased and roll < 0.12:
-        return rng.choice(sorted(PREMIUM_REGIONS))
-    if biased and roll < 0.40:
-        return rng.choice(sorted(MAJOR_REGIONS))
-    return rng.choice(REGIONS)
+    if not biased:
+        return _choice(REGIONS, rng)
+    roll = _randint(0, 99, rng)
+    if roll < 12:
+        return _choice(sorted(PREMIUM_REGIONS), rng)
+    if roll < 40:
+        return _choice(sorted(MAJOR_REGIONS), rng)
+    return _choice(REGIONS, rng)
 
 
 def random_plate(rng: random.Random | None = None) -> PlateValue:
-    digits = f"{(rng.randrange(1000) if rng else secrets.randbelow(1000)):03d}"
+    digits = f"{_randint(0, 999, rng):03d}"
     return build(_random_letters(rng), digits, _random_region(rng, biased=True))
 
 
+def _mirror_digits(rng: random.Random | None) -> str:
+    head = str(_randint(1, 9, rng))
+    return head + str(_randint(0, 9, rng)) + head
+
+
+def _pair_digits(rng: random.Random | None) -> str:
+    a = str(_randint(1, 9, rng))
+    b = str(_randint(0, 9, rng))
+    while b == a:
+        b = str(_randint(0, 9, rng))
+    return a + a + b if _randint(0, 1, rng) else a + b + b
+
+
+def _sequence_digits(rng: random.Random | None) -> str:
+    if _randint(0, 1, rng):
+        start = _randint(1, 7, rng)
+        return "".join(str(start + i) for i in range(3))
+    start = _randint(3, 9, rng)
+    return "".join(str(start - i) for i in range(3))
+
+
+def _epic_digits(rng: random.Random | None) -> str:
+    kind = _randint(0, 2, rng)
+    if kind == 0:
+        return _pair_digits(rng)
+    if kind == 1:
+        return _sequence_digits(rng)
+    return f"{_randint(1, 9, rng)}00"
+
+
+def _prestige_letters(rng: random.Random | None) -> str:
+    return _choice(sorted(PRESTIGE_LETTERS), rng)
+
+
+def plate_for_tier(tier: str, rng: random.Random | None = None) -> PlateValue:
+    """Возвращает номер ровно запрошенной редкости."""
+    if tier not in TIERS:
+        raise ValueError(f"unknown tier: {tier}")
+
+    for _ in range(200):
+        if tier == "mythic":
+            if _randint(0, 1, rng):
+                digits = str(_randint(0, 9, rng)) * 3
+                letters = _random_letters(rng, repeat=_randint(0, 1, rng) == 1)
+            else:
+                digits = f"{_randint(0, 999, rng):03d}"
+                letters = _prestige_letters(rng)
+            region = _choice(sorted(PREMIUM_REGIONS), rng)
+        elif tier == "legendary":
+            letters = _prestige_letters(rng)
+            digits = f"{_randint(0, 999, rng):03d}"
+            region = _random_region(rng)
+        elif tier == "epic":
+            letters = _random_letters(rng)
+            digits = _epic_digits(rng)
+            region = _random_region(rng, biased=True)
+        elif tier == "rare":
+            letters = _random_letters(rng)
+            digits = _mirror_digits(rng)
+            region = _random_region(rng, biased=True)
+        else:
+            letters = _random_letters(rng)
+            digits = f"{_randint(0, 999, rng):03d}"
+            region = _random_region(rng)
+
+        try:
+            plate = build(letters, digits, region)
+        except ValueError:
+            continue
+        if plate.rarity == tier:
+            return plate
+
+    raise RuntimeError(f"не удалось собрать номер редкости {tier}")
+
+
+def value_multiplier(rng: random.Random | None = None) -> float:
+    """Множитель выплаты платной прокрутки: чаще всего номер дешевле ставки."""
+    roll = rng.random() if rng else secrets.randbelow(1000) / 1000
+    if roll < 0.58:
+        return 1 - (0.03 + (roll / 0.58) * 0.25)
+    if roll < 0.85:
+        return 1 + ((roll - 0.58) / 0.27) * 0.06 - 0.03
+    return 1.05 + ((roll - 0.85) / 0.15) * 0.15
+
+
+def spin_plate(tier: str, rng: random.Random | None = None) -> PlateValue:
+    """Номер выбранной редкости с ценой, скорректированной под ставку."""
+    plate = plate_for_tier(tier, rng)
+    multiplier = value_multiplier(rng)
+    price = max(100, int(round(plate.price * multiplier / 100) * 100))
+    return PlateValue(
+        code=plate.code,
+        digits=plate.digits,
+        letters=plate.letters,
+        region=plate.region,
+        score=plate.score,
+        price=price,
+        rarity=plate.rarity,
+        stars=plate.stars,
+        factors=plate.factors,
+    )
+
+
 def pretty_plate(rng: random.Random | None = None) -> PlateValue:
+    """Бесплатная прокрутка: редкость выпадает по естественным правилам."""
     r = rng or random.Random(secrets.randbits(64))
     kind = r.choices(
-        ["triple", "asc", "pal", "round", "pair", "plain"],
-        weights=[4, 7, 9, 8, 20, 52],
+        ["triple", "prestige", "pair", "sequence", "mirror", "plain"],
+        weights=[2, 2, 14, 10, 14, 58],
     )[0]
 
     if kind == "triple":
-        digits = str(r.randint(0, 9)) * 3
-    elif kind == "asc":
-        start = r.randint(1, 7)
-        digits = "".join(str(start + i) for i in range(3))
-    elif kind == "pal":
-        digits = f"{r.randint(1, 9)}{r.randint(0, 9)}{r.randint(1, 9)}"
-        digits = digits[0] + digits[1] + digits[0]
-    elif kind == "round":
-        digits = f"{r.randint(1, 9)}00"
-    elif kind == "pair":
-        a, b = str(r.randint(0, 9)), str(r.randint(0, 9))
-        while b == a:
-            b = str(r.randint(0, 9))
-        digits = a + a + b if r.random() < 0.5 else a + b + b
+        return plate_for_tier("mythic", r) if r.random() < 0.08 else build(
+            _random_letters(r), f"{r.randint(0, 9)}" * 3, _random_region(r, biased=True)
+        )
+    if kind == "prestige":
+        return build(_prestige_letters(r), f"{r.randint(0, 999):03d}", _random_region(r, biased=True))
+    if kind == "pair":
+        digits = _pair_digits(r)
+    elif kind == "sequence":
+        digits = _sequence_digits(r)
+    elif kind == "mirror":
+        digits = _mirror_digits(r)
     else:
         digits = f"{r.randint(0, 999):03d}"
 

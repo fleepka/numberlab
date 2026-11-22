@@ -17,6 +17,7 @@ from app.tasks import catalog as tasks_catalog
 from app.tasks import claim as claim_task
 from app.game import GameError, claim_daily, sell_plate, spin
 from app.models import Plate, User
+from app.plates import STAKES
 
 router = APIRouter(prefix="/api", tags=["profile"])
 
@@ -35,16 +36,18 @@ async def me(user: User = Depends(current_user), session: AsyncSession = Depends
         "user": user_json(user),
         "garage_count": garage_count or 0,
         "top": [plate_json(p) for p in top],
+        "stakes": STAKES,
     }
 
 
 @router.post("/spin")
 async def do_spin(
+    tier: str | None = None,
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     try:
-        plate, cost = await spin(session, user.id)
+        plate, cost, used_tier = await spin(session, user.id, tier)
         await session.commit()
     except GameError as error:
         await session.rollback()
@@ -56,6 +59,7 @@ async def do_spin(
     return {
         "plate": plate_json(plate),
         "cost": cost,
+        "tier": used_tier,
         "coins": user.coins,
         "energy": user.energy,
         "energy_in": next_in(user),
