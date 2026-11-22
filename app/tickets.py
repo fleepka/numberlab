@@ -83,4 +83,8 @@ async def use(session: AsyncSession, user_id: int, rarity: str) -> dict:
         await bump(session, user, "rare")
     await register_hunt(session, user, plate)
 
+    from app.friends import pay_share
+
+    await pay_share(session, user, plate)
+
     return {"plate": plate, "left": row.count, "coins": user.coins}

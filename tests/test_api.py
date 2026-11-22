@@ -426,6 +426,18 @@ async def test_shop_rejects_expensive_purchase(client):
     assert response.status_code == 400
 
 
+async def test_friends_lists_invited_and_contest(client):
+    await get_me(client, "2400")
+    await client.get("/api/me", headers={**headers("2401"), "X-Start-Param": "2400"})
+
+    data = (await client.get("/api/friends", headers=headers("2400"))).json()
+    assert data["invites"] == 1
+    assert len(data["friends"]) == 1
+    assert data["friends"][0]["level"] >= 1
+    assert data["contest"]["me"]["place"] >= 1
+    assert data["contest"]["items"][0]["invites"] >= 1
+
+
 async def test_daily_once_per_day(client):
     first = await client.post("/api/daily", headers=headers("1300"))
     assert first.status_code == 200

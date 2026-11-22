@@ -209,10 +209,23 @@ export type LadderStep = {
   done: boolean;
 };
 
+export type FriendItem = {
+  name: string;
+  level: number;
+  joined: string;
+};
+
+export type ContestData = {
+  items: { user_id: number; name: string; invites: number }[];
+  me: { place: number; invites: number };
+};
+
 export type FriendsData = {
   invites: number;
   link: string;
   ladder: LadderStep[];
+  friends: FriendItem[];
+  contest: ContestData;
 };
 
 export type Tx = {

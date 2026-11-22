@@ -90,6 +90,43 @@ export function FriendsView({
         Пригласить друга
       </button>
 
+      <div className="card">
+        <div className="section-head">
+          <h3>Конкурс приглашений</h3>
+          <span className="muted small">твоё место: {friends.contest.me.place}</span>
+        </div>
+        {friends.contest.items.map((item, index) => (
+          <div className="rating-row" key={item.user_id} style={{ display: "flex", gap: 10 }}>
+            <span className="rating-rank">{index + 1}</span>
+            <span className="rating-name">{item.name}</span>
+            <span className="price">{item.invites}</span>
+          </div>
+        ))}
+        {!friends.contest.items.length && (
+          <span className="muted small">Позови друга — и попадёшь в рейтинг</span>
+        )}
+      </div>
+
+      <div className="section-head">
+        <h2>Твои друзья</h2>
+        <span className="muted small">{friends.friends.length}</span>
+      </div>
+
+      <div className="task-list">
+        {friends.friends.map((friend) => (
+          <div className="card rating-row" key={`${friend.name}-${friend.joined}`}>
+            <div className="rating-name">
+              <div>{friend.name}</div>
+              <div className="muted small">в игре с {friend.joined}</div>
+            </div>
+            <span className="badge">ур. {friend.level}</span>
+          </div>
+        ))}
+        {!friends.friends.length && (
+          <div className="card muted small">Пока никого — поделись ссылкой</div>
+        )}
+      </div>
+
       <div className="section-head">
         <h2>Лидеры</h2>
         <span className="muted small">по гаражам</span>

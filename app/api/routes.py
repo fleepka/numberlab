@@ -19,6 +19,8 @@ from app.collections import claim as claim_collection
 from app.economy import history
 from app.energy import next_in, regenerate
 from app.friends import invite_link, ladder_view
+from app.friends import contest as friends_contest
+from app.friends import invited_list
 from app.rating import leaderboard, position
 from app.tasks import catalog as tasks_catalog
 from app.tasks import claim as claim_task
@@ -242,11 +244,16 @@ async def claim_task_view(
 
 
 @router.get("/friends")
-async def friends_view(user: User = Depends(current_user)) -> dict:
+async def friends_view(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     return {
         "invites": user.invites,
         "link": invite_link(user.tg_id),
         "ladder": ladder_view(user.invites),
+        "friends": await invited_list(session, user.id),
+        "contest": await friends_contest(session, user),
     }
 
 
