@@ -5,8 +5,42 @@ import { formatTime, rarityColor, rarityLabel } from "../rarity";
 import type { Country, PlateT, UserT } from "../types";
 import { Plate } from "./Plate";
 
-const LETTERS = "АВЕКМНОРСТУХ";
-const REGIONS = ["77", "50", "99", "01", "78", "97", "199", "777", "97"];
+const RU_LETTERS = "АВЕКМНОРСТУХ";
+const LATIN = "ABCDEFGHKLMNPRSTUVWXYZ";
+
+function pick(source: string): string {
+  return source[Math.floor(Math.random() * source.length)];
+}
+
+function digits(count: number): string {
+  return Array.from({ length: count }, () => Math.floor(Math.random() * 10)).join("");
+}
+
+function previewCode(country = "RU"): string {
+  if (country === "KZ") {
+    return `${digits(3)}${Array.from({ length: 3 }, () => pick(LATIN)).join("")}${String(
+      1 + Math.floor(Math.random() * 20),
+    ).padStart(2, "0")}`;
+  }
+  if (country === "BY") {
+    const head = Array.from({ length: 2 }, () => pick("АВЕІКМНОРСТХ")).join("");
+    return `${digits(4)}${head}${1 + Math.floor(Math.random() * 7)}`;
+  }
+  if (country === "UZ") {
+    const head = pick(LATIN);
+    const tail = Array.from({ length: 2 }, () => pick(LATIN)).join("");
+    return `${String(1 + Math.floor(Math.random() * 14)).padStart(2, "0")}${head}${digits(3)}${tail}`;
+  }
+  if (country === "AE") {
+    const head = pick(LATIN) + (Math.random() < 0.4 ? pick(LATIN) : "");
+    const length = 3 + Math.floor(Math.random() * 3);
+    return `${head}${String(1 + Math.floor(Math.random() * 9))}${digits(length - 1)}`;
+  }
+  const region = ["77", "50", "99", "01", "78", "97", "199", "777"][
+    Math.floor(Math.random() * 8)
+  ];
+  return `${pick(RU_LETTERS)}${digits(3)}${pick(RU_LETTERS)}${pick(RU_LETTERS)}${region}`;
+}
 
 const EXAMPLES: Record<string, string> = {
   RU: "А777АА 77",
@@ -26,16 +60,6 @@ const LINKS = [
 ] as const;
 
 type NextTab = (typeof LINKS)[number]["id"] | "garage";
-
-function pick(source: string): string {
-  return source[Math.floor(Math.random() * source.length)];
-}
-
-function previewCode(): string {
-  const digits = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
-  const region = REGIONS[Math.floor(Math.random() * REGIONS.length)];
-  return pick(LETTERS) + digits + pick(LETTERS) + pick(LETTERS) + region;
-}
 
 export function SpinView({
   user,
@@ -59,12 +83,17 @@ export function SpinView({
   const [currency, setCurrency] = useState<"energy" | "rubles">("energy");
   const [country, setCountry] = useState("RU");
   const [countryOpen, setCountryOpen] = useState(false);
-  const [preview, setPreview] = useState(previewCode);
+  const [preview, setPreview] = useState(() => previewCode("RU"));
   const [result, setResult] = useState<PlateT | null>(null);
   const [selling, setSelling] = useState(false);
   const [readyIn, setReadyIn] = useState(user.energy_in);
   const [feed, setFeed] = useState<{ code: string; rarity: string; owner: string }[]>([]);
   const interval = useRef<number | null>(null);
+
+  useEffect(() => {
+    setPreview(previewCode(country));
+    setResult(null);
+  }, [country]);
 
   useEffect(() => {
     api
@@ -103,7 +132,7 @@ export function SpinView({
 
     setRolling(true);
     setResult(null);
-    interval.current = window.setInterval(() => setPreview(previewCode()), 55);
+    interval.current = window.setInterval(() => setPreview(previewCode(country)), 55);
     const started = Date.now();
 
     try {

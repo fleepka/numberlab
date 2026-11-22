@@ -16,22 +16,26 @@ const FLAGS: Record<string, string> = {
 
 function split(code: string, country: string) {
   const clean = code.replace(/[\s-]/g, "").toUpperCase();
+
   if (country === "KZ") {
     const m = KZ.exec(clean);
-    if (m) return { head: m[1], mid: m[2], tail: "", region: m[3] };
+    return m ? { head: m[1], mid: m[2], tail: "", region: m[3] } : null;
   }
   if (country === "BY") {
     const m = BY.exec(clean);
-    if (m) return { head: m[1], mid: m[2], tail: "", region: m[3] };
+    return m ? { head: m[1], mid: m[2], tail: "", region: m[3] } : null;
   }
   if (country === "UZ") {
     const m = UZ.exec(clean);
-    if (m) return { head: m[1], mid: `${m[2]}${m[3]}`, tail: m[4], region: m[1], leading: true };
+    return m
+      ? { head: m[1], mid: `${m[2]}${m[3]}`, tail: m[4], region: m[1], leading: true }
+      : null;
   }
   if (country === "AE") {
     const m = AE.exec(clean);
-    if (m) return { head: m[1], mid: m[2], tail: "", region: "" };
+    return m ? { head: m[1], mid: m[2], tail: "", region: "" } : null;
   }
+
   const m = RU.exec(clean);
   if (m) return { head: m[1], mid: m[2], tail: m[3], region: m[4] };
   return null;
