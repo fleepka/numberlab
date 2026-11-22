@@ -210,3 +210,29 @@ class Ticket(Base):
     count: Mapped[int] = mapped_column(Integer, default=0)
 
     __table_args__ = (UniqueConstraint("user_id", "rarity", name="uq_ticket_user_rarity"),)
+
+
+class Hunt(Base):
+    __tablename__ = "hunts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(48), unique=True, index=True)
+    day: Mapped[date] = mapped_column(Date, index=True)
+    title: Mapped[str] = mapped_column(String(96))
+    kind: Mapped[str] = mapped_column(String(16))
+    value: Mapped[str] = mapped_column(String(16), default="")
+    reward_coins: Mapped[int] = mapped_column(Integer, default=0)
+    reward_energy: Mapped[int] = mapped_column(Integer, default=0)
+    reward_ticket: Mapped[str] = mapped_column(String(16), default="")
+
+
+class UserHunt(Base):
+    __tablename__ = "user_hunts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    hunt_id: Mapped[int] = mapped_column(ForeignKey("hunts.id", ondelete="CASCADE"), index=True)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (UniqueConstraint("user_id", "hunt_id", name="uq_user_hunt"),)

@@ -36,6 +36,18 @@ export type UserT = {
   streak: number;
 };
 
+export type HuntT = {
+  title: string;
+  kind: string;
+  value: string;
+  day: string;
+  done: boolean;
+  claimed: boolean;
+  reward_coins: number;
+  reward_energy: number;
+  reward_ticket: string | null;
+};
+
 export type TicketT = {
   rarity: string;
   label: string;

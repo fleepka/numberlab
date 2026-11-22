@@ -3,6 +3,7 @@ import type {
   DuelT,
   FriendsData,
   GarageData,
+  HuntT,
   JoinResult,
   MeResponse,
   Offer,
@@ -116,6 +117,13 @@ export const api = {
     request<RatingData>(`/api/rating?period=${period}`),
   friends: () => request<FriendsData>("/api/friends"),
   tickets: () => request<{ items: TicketT[] }>("/api/tickets"),
+  hunt: () => request<HuntT>("/api/hunt"),
+  claimHunt: () =>
+    request<{
+      coins: number;
+      energy: number;
+      rewards: { coins: number; energy: number; ticket: string | null };
+    }>("/api/hunt/claim", { method: "POST" }),
   useTicket: (rarity: string) =>
     request<{ plate: PlateT; left: number; coins: number }>("/api/tickets/use", {
       method: "POST",

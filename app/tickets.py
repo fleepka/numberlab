@@ -75,10 +75,12 @@ async def use(session: AsyncSession, user_id: int, rarity: str) -> dict:
     user.best_score = max(user.best_score, plate.score)
     award_xp(user, 5)
 
+    from app.hunts import register as register_hunt
     from app.tasks import bump
 
     await bump(session, user, "spin")
     if tier_index(plate.rarity) >= tier_index("rare"):
         await bump(session, user, "rare")
+    await register_hunt(session, user, plate)
 
     return {"plate": plate, "left": row.count, "coins": user.coins}

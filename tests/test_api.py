@@ -1,10 +1,10 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 
 from app.db import SessionLocal
 from app.energy import ENERGY_MAX
-from app.models import Collection, Plate, Ticket, User
+from app.models import Collection, Hunt, Plate, Ticket, User, UserHunt
 from app.shop import offers_for
 
 
@@ -272,6 +272,25 @@ async def test_ticket_spins_plate_of_rarity(client):
     again = await client.post(
         "/api/tickets/use", headers=headers("1800"), json={"rarity": "epic"}
     )
+    assert again.status_code == 400
+
+
+async def test_hunt_claim_once(client):
+    await get_me(client, "1900")
+    state = (await client.get("/api/hunt", headers=headers("1900"))).json()
+    assert state["done"] is False
+
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1900))
+        hunt = await session.scalar(select(Hunt).order_by(Hunt.id.desc()))
+        session.add(UserHunt(user_id=user.id, hunt_id=hunt.id, done_at=datetime.now(timezone.utc)))
+        await session.commit()
+
+    claim = await client.post("/api/hunt/claim", headers=headers("1900"))
+    assert claim.status_code == 200, claim.text
+    assert claim.json()["rewards"]["coins"] > 0
+
+    again = await client.post("/api/hunt/claim", headers=headers("1900"))
     assert again.status_code == 400
 
 

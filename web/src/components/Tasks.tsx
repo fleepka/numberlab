@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { money } from "../format";
-import type { TaskT, UserT } from "../types";
+import type { HuntT, TaskT, UserT } from "../types";
 
 type Kind = "daily" | "weekly" | "once";
 
@@ -63,6 +63,7 @@ export function TasksView({
   notify: (message: string, kind?: "ok" | "err") => void;
 }) {
   const [items, setItems] = useState<TaskT[]>([]);
+  const [hunt, setHunt] = useState<HuntT | null>(null);
   const [kind, setKind] = useState<Kind>("daily");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -70,8 +71,9 @@ export function TasksView({
   async function load() {
     setLoading(true);
     try {
-      const data = await api.tasks();
-      setItems(data.items);
+      const [tasks, daily] = await Promise.all([api.tasks(), api.hunt()]);
+      setItems(tasks.items);
+      setHunt(daily);
     } catch (error) {
       notify((error as Error).message, "err");
     } finally {
@@ -102,6 +104,23 @@ export function TasksView({
     }
   }
 
+  async function claimHunt() {
+    if (busy !== null) return;
+    setBusy("hunt");
+    try {
+      const result = await api.claimHunt();
+      const parts = [`+${money(result.rewards.coins)}`];
+      if (result.rewards.energy) parts.push(`+${result.rewards.energy} энергии`);
+      if (result.rewards.ticket) parts.push("+ билет");
+      notify(`Охота дня: ${parts.join(", ")}`, "ok");
+      await Promise.all([load(), refresh()]);
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (loading) return <div className="view center muted">Загружаем задания…</div>;
 
   const visible = items.filter((item) => item.kind === kind);
@@ -117,6 +136,34 @@ export function TasksView({
       </div>
 
       <StreakStrip streak={user.streak} />
+
+      {hunt && (
+        <div className={hunt.claimed ? "card hunt-card claimed" : "card hunt-card"}>
+          <div className="hunt-head">
+            <div>
+              <div className="hunt-label">Охота дня</div>
+              <div className="hunt-title">{hunt.title}</div>
+            </div>
+            <div className="hunt-reward">
+              <span className="price">{money(hunt.reward_coins)}</span>
+              {hunt.reward_energy > 0 && <span className="energy-text">⚡{hunt.reward_energy}</span>}
+              {hunt.reward_ticket && <span className="gems-text">билет</span>}
+            </div>
+          </div>
+          <div className="hunt-foot">
+            <span className={hunt.done ? "hunt-state hunt-state-done" : "hunt-state"}>
+              {hunt.claimed ? "награда получена" : hunt.done ? "выполнено — забирай" : "крути, пока не выпадет"}
+            </span>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={claimHunt}
+              disabled={!hunt.done || hunt.claimed || busy !== null}
+            >
+              {busy === "hunt" ? "…" : "Забрать"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="segmented">
         {SEGMENTS.map((segment) => (

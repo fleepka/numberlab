@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.economy import GameError, apply_delta, lock_user, lock_users, now
 from app.energy import regenerate
+from app.hunts import register as register_hunt
 from app.models import DailyClaim, Duel, Plate, Spin, User
 from app.plates import STAKES, PlateValue, pretty_plate, spin_plate, tier_index
 from app.progress import award_xp
@@ -80,6 +81,7 @@ async def spin(
     await bump(session, user, "spin")
     if tier_index(plate.rarity) >= tier_index("rare"):
         await bump(session, user, "rare")
+    await register_hunt(session, user, plate)
     return plate, cost, tier
 
 

@@ -19,6 +19,8 @@ from app.tasks import catalog as tasks_catalog
 from app.tasks import claim as claim_task
 from app.game import GameError, claim_daily, sell_plate, spin
 from app.garage import claim_income, income_state, sell_many
+from app.hunts import claim as claim_hunt
+from app.hunts import view as hunt_state
 from app.models import Plate, User
 from app.plates import STAKES
 
@@ -248,6 +250,30 @@ async def rating_view(
         "items": await leaderboard(session, period=period),
         "me": await position(session, user.id, period),
     }
+
+
+@router.get("/hunt")
+async def hunt_view(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    result = await hunt_state(session, user)
+    await session.commit()
+    return result
+
+
+@router.post("/hunt/claim")
+async def hunt_claim(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        result = await claim_hunt(session, user.id)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
 
 
 @router.get("/tickets")
