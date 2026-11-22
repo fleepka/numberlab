@@ -54,9 +54,13 @@ async def buy_slots(session: AsyncSession, user_id: int) -> dict:
 
 
 async def income_state(session: AsyncSession, user: User) -> dict:
+    from app.vip import INCOME_BONUS, is_active
+
     plates = await garage_plates(session, user.id)
     total = sum(plate.price for plate in plates)
     rate = rate_for(total)
+    if is_active(user):
+        rate = int(rate * INCOME_BONUS)
 
     since = user.garage_income_at or user.created_at
     hours = max(0.0, (now() - _aware(since)).total_seconds() / 3600)

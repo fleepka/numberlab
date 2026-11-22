@@ -477,6 +477,80 @@ async def test_full_garage_blocks_spin(client):
     assert second.status_code == 400
 
 
+async def test_vip_gives_slots_and_income_bonus(client):
+    await get_me(client, "2600")
+    await client.post("/api/spin?tier=common", headers=headers("2600"))
+
+    before = (await client.get("/api/garage", headers=headers("2600"))).json()["income"]["rate"]
+
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2600))
+        user.coins = 200_000
+        await session.commit()
+
+    bought = await client.post("/api/vip/buy", headers=headers("2600"))
+    assert bought.status_code == 200, bought.text
+    assert bought.json()["slots"] == 24
+    assert bought.json()["active"] is True
+
+    after = (await client.get("/api/garage", headers=headers("2600"))).json()["income"]["rate"]
+    assert after == int(before * 1.5)
+
+
+async def test_vip_requires_money(client):
+    await get_me(client, "2610")
+    response = await client.post("/api/vip/buy", headers=headers("2610"))
+    assert response.status_code == 400
+
+
+async def test_auction_bid_and_refund(client):
+    await get_me(client, "2800")
+    await get_me(client, "2801")
+    async with SessionLocal() as session:
+        for tg_id in (2800, 2801):
+            user = await session.scalar(select(User).where(User.tg_id == tg_id))
+            user.coins = 200_000
+        await session.commit()
+
+    lot = (await client.get("/api/auction", headers=headers("2800"))).json()
+    first = await client.post(
+        "/api/auction/bid", headers=headers("2800"), json={"amount": lot["min_bid"]}
+    )
+    assert first.status_code == 200, first.text
+
+    second = await client.post(
+        "/api/auction/bid",
+        headers=headers("2801"),
+        json={"amount": lot["min_bid"] + lot["step"]},
+    )
+    assert second.status_code == 200, second.text
+
+    first_user = await get_me(client, "2800")
+    assert first_user["user"]["coins"] == 200_000
+
+    view = (await client.get("/api/auction", headers=headers("2801"))).json()
+    assert view["mine"] is True
+    assert view["top_bid"] == lot["min_bid"] + lot["step"]
+
+
+async def test_buy_frame(client):
+    await get_me(client, "2700")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2700))
+        user.gems = 150
+        await session.commit()
+
+    bought = await client.post("/api/style/buy", headers=headers("2700"), json={"frame": "neon"})
+    assert bought.status_code == 200, bought.text
+    assert bought.json()["gems"] == 51
+
+    me = await get_me(client, "2700")
+    assert me["user"]["frame"] == "neon"
+
+    again = await client.post("/api/style/buy", headers=headers("2700"), json={"frame": "neon"})
+    assert again.status_code == 400
+
+
 async def test_daily_once_per_day(client):
     first = await client.post("/api/daily", headers=headers("1300"))
     assert first.status_code == 200

@@ -2,15 +2,18 @@ import { useEffect, useState } from "react";
 import { api, tg } from "../api";
 import { money } from "../format";
 import { rarityColor, rarityLabel } from "../rarity";
-import type { Offer, ShopData } from "../types";
+import type { AuctionData, Offer, ShopData } from "../types";
 import { Plate } from "./Plate";
 
-type Tab = "numbers" | "energy" | "tickets";
+type Tab = "numbers" | "energy" | "tickets" | "vip" | "auction" | "style";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "numbers", label: "Номера" },
   { id: "energy", label: "Энергия" },
   { id: "tickets", label: "Билеты" },
+  { id: "vip", label: "VIP" },
+  { id: "auction", label: "Аукцион" },
+  { id: "style", label: "Стиль" },
 ];
 
 const TICKETS = ["rare", "epic", "legendary"];
@@ -25,6 +28,38 @@ export function ShopView({
   const [data, setData] = useState<ShopData | null>(null);
   const [tab, setTab] = useState<Tab>("numbers");
   const [busy, setBusy] = useState<string | null>(null);
+  const [auction, setAuction] = useState<AuctionData | null>(null);
+  const [bidValue, setBidValue] = useState("");
+
+  useEffect(() => {
+    if (tab !== "auction") return;
+    api
+      .auction()
+      .then((lot) => {
+        setAuction(lot);
+        setBidValue(String(lot.min_bid));
+      })
+      .catch((error: Error) => notify(error.message, "err"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  async function bid() {
+    const amount = Number(bidValue);
+    if (!auction || !Number.isFinite(amount) || busy) return;
+    setBusy("auction");
+    try {
+      await api.bidAuction(amount);
+      notify(`Ставка ${money(amount)} принята`, "ok");
+      const lot = await api.auction();
+      setAuction(lot);
+      setBidValue(String(lot.min_bid));
+      await refresh();
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function load() {
     try {
@@ -88,6 +123,34 @@ export function ShopView({
       await api.buyTicket(rarity);
       notify(`${rarityLabel(rarity)} билет куплен`, "ok");
       await refresh();
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function buyFrame(code: string) {
+    if (busy) return;
+    setBusy(code);
+    try {
+      await api.buyFrame(code);
+      notify("Рамка применена", "ok");
+      await Promise.all([load(), refresh()]);
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function buyVip() {
+    if (busy) return;
+    setBusy("vip");
+    try {
+      await api.buyVip();
+      notify("VIP активен: +2 места и доход гаража ×1,5", "ok");
+      await Promise.all([load(), refresh()]);
     } catch (error) {
       notify((error as Error).message, "err");
     } finally {
@@ -159,6 +222,88 @@ export function ShopView({
                 disabled={busy === pack.code}
               >
                 {busy === pack.code ? "…" : "Купить"}
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {tab === "vip" && (
+        <div className="card vip-card">
+          <div className="section-head">
+            <h3>VIP</h3>
+            {data.vip_until && <span className="badge">до {data.vip_until}</span>}
+          </div>
+          <ul className="vip-list">
+            <li>+2 места в гараже сразу</li>
+            <li>Доход гаража ×1,5</li>
+            <li>Продление в любой момент</li>
+          </ul>
+          <button className="btn btn-primary btn-lg" onClick={buyVip} disabled={busy === "vip"}>
+            {busy === "vip" ? "…" : data.vip_until ? "Продлить · 30 дней" : `Оформить · ${money(data.vip_price)}`}
+          </button>
+          <p className="muted small">{money(data.vip_price)} за 30 дней игровыми рублями.</p>
+        </div>
+      )}
+
+      {tab === "auction" && (
+        <div className="card vip-card">
+          <div className="section-head">
+            <h3>Аукцион сезона</h3>
+            {auction && (
+              <span className="badge">
+                до {new Date(auction.ends_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
+
+          {!auction ? (
+            <p className="muted small">Открываем лот…</p>
+          ) : (
+            <>
+              <div className="auction-lot">
+                <Plate code={auction.code} size="md" glow={rarityColor(auction.rarity)} />
+                <div className="price">
+                  {auction.top_bid ? money(auction.top_bid) : `старт ${money(auction.min_bid)}`}
+                </div>
+                <div className="muted small">
+                  {auction.leader ? `лидирует ${auction.leader}` : "ставок пока нет"}
+                </div>
+              </div>
+
+              <input
+                className="chat-input bid-input"
+                type="number"
+                inputMode="numeric"
+                value={bidValue}
+                onChange={(event) => setBidValue(event.target.value)}
+              />
+
+              <button className="btn btn-primary btn-lg" onClick={bid} disabled={busy === "auction"}>
+                {busy === "auction" ? "…" : `Поставить ${bidValue ? money(Number(bidValue)) : ""}`}
+              </button>
+              <p className="muted small">
+                Шаг {money(auction.step)}. Победитель забирает номер, ставки остальных возвращаются.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === "style" && (
+        <div className="shop-grid">
+          {data.frames.map((frame) => (
+            <article className="card shop-card" key={frame.code}>
+              <span className="frame-preview" style={{ borderColor: frame.color }}>
+                {frame.title}
+              </span>
+              <span className="price">◆ {frame.price}</span>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => buyFrame(frame.code)}
+                disabled={busy === frame.code}
+              >
+                {busy === frame.code ? "…" : "Надеть"}
               </button>
             </article>
           ))}

@@ -10,6 +10,8 @@ from app import tickets as ticket_service
 from app.api.deps import current_user
 from app.api.serializers import plate_json, tx_json, user_json
 from app.db import get_session
+from app.auction import bid as place_bid
+from app.auction import view as auction_state
 from app.config import settings
 from app.chat import history as chat_history
 from app.chat import send as send_message
@@ -37,6 +39,8 @@ from app.passes import unlock as unlock_pass
 from app.passes import view as pass_view
 from app.plates import ENERGY_COST, STAKES
 from app.tg import stars_invoice
+from app.style import buy as buy_frame
+from app.vip import buy as buy_vip
 
 router = APIRouter(prefix="/api", tags=["profile"])
 
@@ -307,6 +311,64 @@ async def nick_claim(
         raise HTTPException(status_code=400, detail="некорректный срок") from None
     try:
         result = await claim_nick(session, user.id, threshold)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
+
+
+@router.get("/auction")
+async def auction_view(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    result = await auction_state(session, user)
+    await session.commit()
+    return result
+
+
+@router.post("/auction/bid")
+async def auction_bid(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        amount = int(payload.get("amount", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="некорректная ставка") from None
+    try:
+        result = await place_bid(session, user.id, amount)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
+
+
+@router.post("/style/buy")
+async def style_buy(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        result = await buy_frame(session, user.id, str(payload.get("frame", "")))
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
+
+
+@router.post("/vip/buy")
+async def vip_buy(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        result = await buy_vip(session, user.id)
         await session.commit()
     except GameError as error:
         await session.rollback()

@@ -23,6 +23,8 @@ from app.shop import (
     prepare_purchase,
 )
 from app.tg import bot, stars_invoice
+from app.style import FRAMES
+from app.vip import PRICE as VIP_PRICE
 
 router = APIRouter(prefix="/api/shop", tags=["shop"])
 
@@ -59,6 +61,12 @@ async def shop(
             for code, item in ENERGY_PACKS.items()
         ],
         "ticket_prices": TICKET_PRICES,
+        "vip_price": VIP_PRICE,
+        "vip_until": user.vip_until.isoformat() if user.vip_until else None,
+        "frames": [
+            {"code": code, "title": item["title"], "price": item["price"], "color": item["color"]}
+            for code, item in FRAMES.items()
+        ],
     }
 
 

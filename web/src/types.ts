@@ -37,6 +37,8 @@ export type UserT = {
   garage_slots: number;
   season_points: number;
   pass_premium: boolean;
+  vip_until: string | null;
+  frame: string;
 };
 
 export type NickT = {
@@ -157,10 +159,24 @@ export type EnergyPack = {
   price: number;
 };
 
+export type AuctionData = {
+  code: string;
+  rarity: string;
+  ends_at: string;
+  top_bid: number;
+  min_bid: number;
+  step: number;
+  leader: string | null;
+  mine: boolean;
+};
+
 export type ShopData = {
   offers: Offer[];
   energy_packs: EnergyPack[];
   ticket_prices: Record<string, number>;
+  vip_price: number;
+  vip_until: string | null;
+  frames: { code: string; title: string; price: number; color: string }[];
 };
 
 export type CollectionT = {

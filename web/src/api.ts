@@ -1,4 +1,5 @@
 import type {
+  AuctionData,
   ChatMessage,
   CollectionT,
   DuelT,
@@ -174,6 +175,21 @@ export const api = {
     request<{ coins: number; rarity: string }>("/api/shop/ticket", {
       method: "POST",
       body: JSON.stringify({ rarity }),
+    }),
+  buyVip: () =>
+    request<{ vip_until: string; coins: number; slots: number; active: boolean }>("/api/vip/buy", {
+      method: "POST",
+    }),
+  auction: () => request<AuctionData>("/api/auction"),
+  bidAuction: (amount: number) =>
+    request<{ top_bid: number; coins: number; ends_at: string }>("/api/auction/bid", {
+      method: "POST",
+      body: JSON.stringify({ amount }),
+    }),
+  buyFrame: (frame: string) =>
+    request<{ frame: string; gems: number; color: string }>("/api/style/buy", {
+      method: "POST",
+      body: JSON.stringify({ frame }),
     }),
   buy: (code: string) =>
     request<{ dev: boolean; invoice_url: string | null; plate?: PlateT | null }>("/api/shop/buy", {

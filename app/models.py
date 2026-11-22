@@ -56,6 +56,8 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
     garage_slots: Mapped[int] = mapped_column(Integer, default=22)
+    vip_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    frame: Mapped[str] = mapped_column(String(16), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -264,3 +266,17 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
+
+
+class Auction(Base):
+    __tablename__ = "auctions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    plate_code: Mapped[str] = mapped_column(String(16))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    top_bid: Mapped[int] = mapped_column(Integer, default=0)
+    top_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    closed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

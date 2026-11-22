@@ -52,6 +52,8 @@ def user_json(user: User) -> dict:
         "garage_slots": user.garage_slots,
         "season_points": user.season_points,
         "pass_premium": user.pass_premium,
+        "vip_until": user.vip_until.isoformat() if user.vip_until else None,
+        "frame": user.frame,
     }
 
 

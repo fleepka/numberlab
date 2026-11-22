@@ -39,6 +39,12 @@ const NAV: { id: Tab; label: string }[] = [
 
 export type TabId = Tab;
 
+const FRAME_COLORS: Record<string, string> = {
+  neon: "#35e0c0",
+  gold: "#ffc247",
+  ice: "#6c8cff",
+};
+
 const ICONS: Record<Tab, string> = {
   spin: "M12 3a9 9 0 1 0 9 9M12 7v5l3 2",
   garage: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
@@ -117,7 +123,11 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="avatar" onClick={() => setTab("profile")}>
+        <button
+          className="avatar"
+          onClick={() => setTab("profile")}
+          style={me.user.frame ? { borderColor: FRAME_COLORS[me.user.frame] } : undefined}
+        >
           {me.user.photo_url ? (
             <img src={me.user.photo_url} alt="" />
           ) : (
