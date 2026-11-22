@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { api, tg } from "./api";
 import { AdminView } from "./components/Admin";
 import { ChatView } from "./components/Chat";
+import { ClanView } from "./components/Clan";
 import { CollectionsView } from "./components/Collections";
 import { DuelsView } from "./components/Duels";
 import { FriendsView } from "./components/Friends";
 import { GarageView } from "./components/Garage";
+import { GiftsView } from "./components/Gifts";
 import { PassView } from "./components/Pass";
 import { ProfileView } from "./components/Profile";
 import { RatingView } from "./components/Rating";
@@ -29,6 +31,8 @@ type Tab =
   | "tickets"
   | "pass"
   | "chat"
+  | "clan"
+  | "gifts"
   | "admin"
   | "settings"
   | "profile";
@@ -61,6 +65,8 @@ const ICONS: Record<Tab, string> = {
   tickets: "M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4zM9 6v8",
   pass: "M5 4h14v16H5zM9 9h6M9 13h6M9 17h3",
   chat: "M4 6h16v10H9l-5 4V6z",
+  clan: "M12 3l8 3v6c0 4-3 7-8 9-5-2-8-5-8-9V6l8-3zM9 12l2 2 4-4",
+  gifts: "M4 10h16v10H4zM4 14h16M12 10v10M8 10a2 2 0 1 1 4 0M16 10a2 2 0 1 0-4 0",
   admin: "M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4zM9 12l2 2 4-4",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5 10.9a7 7 0 0 0 0 2.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 2.6h5l.3-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6c.1-.3.1-.7.1-1z",
   profile: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
@@ -195,6 +201,8 @@ export default function App() {
         {tab === "tickets" && <TicketsView refresh={refresh} notify={notify} />}
         {tab === "pass" && <PassView refresh={refresh} notify={notify} />}
         {tab === "chat" && <ChatView selfId={me.user.id} notify={notify} />}
+        {tab === "clan" && <ClanView refresh={refresh} notify={notify} />}
+        {tab === "gifts" && <GiftsView refresh={refresh} notify={notify} />}
         {tab === "admin" && me.user.is_admin && <AdminView notify={notify} />}
         {tab === "settings" && (
           <SettingsView current={me.user.theme} refresh={refresh} notify={notify} />

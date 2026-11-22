@@ -18,6 +18,8 @@ const REASONS: Record<string, string> = {
 const MENU = [
   { key: "pass", title: "Сезонный пропуск", hint: "награды сезона" },
   { key: "shop", title: "Магазин", hint: "номера и награды" },
+  { key: "clan", title: "Клан", hint: "общая коллекция" },
+  { key: "gifts", title: "Подарки", hint: "друзьям" },
   { key: "promo", title: "Промокод", hint: "ввести код" },
   { key: "settings", title: "Настройки", hint: "профиль и уведомления" },
   { key: "rules", title: "Правила игры", hint: "" },
@@ -44,7 +46,7 @@ export function ProfileView({
   top: PlateT[];
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
-  onNavigate?: (tab: "shop" | "pass" | "admin" | "settings") => void;
+  onNavigate?: (tab: "shop" | "pass" | "admin" | "settings" | "clan" | "gifts") => void;
 }) {
   const [history, setHistory] = useState<Tx[]>([]);
   const [dailyBusy, setDailyBusy] = useState(false);
@@ -278,7 +280,9 @@ export function ProfileView({
               item.key === "shop" ||
               item.key === "pass" ||
               item.key === "admin" ||
-              item.key === "settings"
+              item.key === "settings" ||
+              item.key === "clan" ||
+              item.key === "gifts"
                 ? onNavigate?.(item.key)
                 : notify("Скоро добавим", "ok")
             }

@@ -319,3 +319,35 @@ export type Tx = {
   ref: string | null;
   created_at: string | null;
 };
+
+export type ClanMember = {
+  user_id: number;
+  name: string;
+  level: number;
+  value: number;
+  owner: boolean;
+};
+
+export type ClanT = {
+  name: string;
+  code: string;
+  owner_id: number;
+  cost: number;
+  max: number;
+  total: number;
+  members: ClanMember[];
+};
+
+export type ClanResponse = { clan: ClanT | null };
+
+export type GiftFriend = {
+  user_id: number;
+  name: string;
+  level: number;
+};
+
+export type GiftsData = {
+  items: GiftFriend[];
+  left: number;
+  max: number;
+};

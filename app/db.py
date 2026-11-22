@@ -37,6 +37,7 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("season_points", "INTEGER NOT NULL DEFAULT 0"),
         ("invites", "INTEGER NOT NULL DEFAULT 0"),
         ("invited_by", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+        ("clan_id", "INTEGER"),
         ("garage_income_at", "TIMESTAMP WITH TIME ZONE"),
         ("garage_slots", "INTEGER NOT NULL DEFAULT 22"),
         ("vip_until", "DATE"),

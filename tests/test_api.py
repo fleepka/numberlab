@@ -860,3 +860,29 @@ async def test_spin_awards_xp(client):
     profile = (await get_me(client, "1930"))["user"]
     assert profile["xp"] == 5
     assert profile["level"] == 1
+
+async def test_clan_needs_coins(client):
+    response = await client.post("/api/clan", headers=headers("2100"), json={"name": "Тестовый"})
+    assert response.status_code == 400
+
+
+async def test_clan_and_gifts_empty_state(client):
+    state = await client.get("/api/clan", headers=headers("2101"))
+    assert state.status_code == 200
+    assert state.json()["clan"] is None
+
+    gifts = await client.get("/api/gifts", headers=headers("2101"))
+    body = gifts.json()
+    assert body["items"] == []
+    assert body["left"] == 3
+
+
+async def test_gift_to_self_rejected(client):
+    await get_me(client, "2102")
+    me = await get_me(client, "2102")
+    response = await client.post(
+        "/api/gifts/send",
+        headers=headers("2102"),
+        json={"to_user_id": me["user"]["id"], "amount": 1},
+    )
+    assert response.status_code == 400

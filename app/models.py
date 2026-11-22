@@ -40,6 +40,7 @@ class User(Base):
     invited_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    clan_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     nick_since: Mapped[date | None] = mapped_column(Date, nullable=True)
     nick7: Mapped[bool] = mapped_column(Boolean, default=False)
     nick14: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -60,6 +61,26 @@ class User(Base):
     frame: Mapped[str] = mapped_column(String(16), default="")
     plate_skin: Mapped[str] = mapped_column(String(24), default="")
     theme: Mapped[str] = mapped_column(String(24), default="champagne")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Clan(Base):
+    __tablename__ = "clans"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(24), unique=True, index=True)
+    code: Mapped[str] = mapped_column(String(8), unique=True, index=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Gift(Base):
+    __tablename__ = "gifts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    from_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    to_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    amount: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

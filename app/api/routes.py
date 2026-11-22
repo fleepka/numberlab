@@ -23,6 +23,14 @@ from app.energy import next_in, regenerate
 from app.friends import invite_link, ladder_view
 from app.friends import contest as friends_contest
 from app.friends import invited_list
+from app.clans import ClanError
+from app.clans import create as clan_create
+from app.clans import join as clan_join
+from app.clans import leave as clan_leave
+from app.clans import view as clan_view
+from app.gifts import GiftError
+from app.gifts import friends as gift_friends
+from app.gifts import send as gift_send
 from app.promo import redeem as redeem_promo
 from app.rank import rank_for
 from app.rating import leaderboard, position
@@ -297,6 +305,86 @@ async def friends_view(
         "friends": await invited_list(session, user.id),
         "contest": await friends_contest(session, user),
     }
+
+
+@router.get("/clan")
+async def clan_state(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return {"clan": await clan_view(session, user)}
+
+
+@router.post("/clan")
+async def clan_new(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        await clan_create(session, user, str(payload.get("name", "")))
+        await session.commit()
+    except ClanError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return {"clan": await clan_view(session, user)}
+
+
+@router.post("/clan/join")
+async def clan_join_view(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        await clan_join(session, user, str(payload.get("code", "")))
+        await session.commit()
+    except ClanError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return {"clan": await clan_view(session, user)}
+
+
+@router.post("/clan/leave")
+async def clan_leave_view(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        await clan_leave(session, user)
+        await session.commit()
+    except ClanError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return {"clan": await clan_view(session, user)}
+
+
+@router.get("/gifts")
+async def gifts_view(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return await gift_friends(session, user)
+
+
+@router.post("/gifts/send")
+async def gifts_send(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        result = await gift_send(
+            session,
+            user,
+            int(payload.get("to_user_id", 0)),
+            int(payload.get("amount", 0)),
+        )
+        await session.commit()
+    except (GiftError, LookupError, ValueError) as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
 
 
 @router.get("/rating")

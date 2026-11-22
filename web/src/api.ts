@@ -3,10 +3,12 @@ import type {
   AdminUser,
   AuctionData,
   ChatMessage,
+  ClanResponse,
   CollectionT,
   DuelT,
   FriendsData,
   GarageData,
+  GiftsData,
   HuntT,
   JoinResult,
   MeResponse,
@@ -134,6 +136,21 @@ export const api = {
   rating: (period: "season" | "week" = "season") =>
     request<RatingData>(`/api/rating?period=${period}`),
   friends: () => request<FriendsData>("/api/friends"),
+  clan: () => request<ClanResponse>("/api/clan"),
+  createClan: (name: string) =>
+    request<ClanResponse>("/api/clan", { method: "POST", body: JSON.stringify({ name }) }),
+  joinClan: (code: string) =>
+    request<ClanResponse>("/api/clan/join", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+  leaveClan: () => request<ClanResponse>("/api/clan/leave", { method: "POST" }),
+  gifts: () => request<GiftsData>("/api/gifts"),
+  sendGift: (to_user_id: number, amount: number) =>
+    request<{ amount: number; gems: number; left: number }>("/api/gifts/send", {
+      method: "POST",
+      body: JSON.stringify({ to_user_id, amount }),
+    }),
   tickets: () => request<{ items: TicketT[] }>("/api/tickets"),
   hunt: () => request<HuntT>("/api/hunt"),
   claimHunt: () =>
