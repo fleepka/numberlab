@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 from app.models import User
 
-ENERGY_MAX = 30
-REGEN_MINUTES = 10
+ENERGY_MAX = 512
+REGEN_MINUTES = 2
 
 
 def _aware(value: datetime | None) -> datetime | None:

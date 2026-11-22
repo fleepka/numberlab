@@ -70,7 +70,7 @@ async def get_or_create_user(
         user = User(
             tg_id=tg_id,
             coins=settings.start_balance,
-            energy=ENERGY_MAX,
+            energy=min(ENERGY_MAX, settings.start_energy),
             is_admin=bool(settings.admin_id) and tg_id == settings.admin_id,
         )
         session.add(user)

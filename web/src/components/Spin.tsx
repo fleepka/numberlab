@@ -197,18 +197,16 @@ export function SpinView({
         )}
       </div>
 
-      <div className="result-actions">
-        <button
-          className="btn btn-ghost"
-          onClick={() => onNavigate?.("garage")}
-          disabled={!result || rolling}
-        >
-          В гараж
-        </button>
-        <button className="btn btn-ghost" onClick={sellResult} disabled={!result || selling}>
-          {selling ? "…" : "Продать"}
-        </button>
-      </div>
+      {result && (
+        <div className="result-actions">
+          <button className="btn btn-ghost" onClick={() => onNavigate?.("garage")} disabled={rolling}>
+            В гараж
+          </button>
+          <button className="btn btn-ghost" onClick={sellResult} disabled={selling}>
+            {selling ? "…" : "Продать"}
+          </button>
+        </div>
+      )}
 
       <div className="stake-block">
         <div className="stake-head">
@@ -264,21 +262,6 @@ export function SpinView({
         )}
         <span className="dot" />
         <span className="muted">номеров: {user.spins}</span>
-      </div>
-
-      <div className="stat-grid">
-        <div className="stat">
-          <span className="stat-value">{user.spins}</span>
-          <span className="stat-label">номеров</span>
-        </div>
-        <div className="stat">
-          <span className="stat-value">{user.best_score}</span>
-          <span className="stat-label">лучший счёт</span>
-        </div>
-        <div className="stat">
-          <span className="stat-value">{user.duels_won}</span>
-          <span className="stat-label">побед в дуэлях</span>
-        </div>
       </div>
 
       {onNavigate && (

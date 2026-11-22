@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     spin_cost: int = 50
     daily_base: int = 150
     start_balance: int = 1500
+    start_energy: int = 64
 
 
 @lru_cache

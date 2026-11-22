@@ -30,6 +30,12 @@ async def test_user_created_with_start_balance(client):
 
 
 async def test_spin_spends_energy_first(client):
+    await get_me(client, "1100")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1100))
+        user.energy = ENERGY_MAX
+        await session.commit()
+
     first = (await client.post("/api/spin", headers=headers("1100"))).json()
     assert first["cost"] == 0
     assert first["coins"] == 1500
@@ -57,6 +63,12 @@ async def test_spin_costs_coins_without_energy(client):
 
 
 async def test_rare_spin_costs_energy_and_returns_rare(client):
+    await get_me(client, "1103")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1103))
+        user.energy = ENERGY_MAX
+        await session.commit()
+
     response = await client.post("/api/spin?tier=rare", headers=headers("1103"))
     assert response.status_code == 200, response.text
     body = response.json()
@@ -69,6 +81,21 @@ async def test_spin_returns_selected_country(client):
     response = await client.post("/api/spin?tier=rare&country=KZ", headers=headers("1120"))
     assert response.status_code == 200, response.text
     assert response.json()["plate"]["country"] == "KZ"
+
+
+async def test_energy_cap_allows_mythic_spin(client):
+    await get_me(client, "1130")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1130))
+        user.energy = 300
+        await session.commit()
+
+    response = await client.post("/api/spin?tier=mythic", headers=headers("1130"))
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["cost"] == 0
+    assert body["energy"] == 300 - 256
+    assert body["plate"]["rarity"] == "mythic"
 
 
 async def test_paid_spin_needs_enough_money(client):
@@ -418,6 +445,7 @@ async def test_spin_currency_rubles_keeps_energy(client):
     async with SessionLocal() as session:
         user = await session.scalar(select(User).where(User.tg_id == 2320))
         user.coins = 5000
+        user.energy = ENERGY_MAX
         await session.commit()
 
     response = await client.post(
