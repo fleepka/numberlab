@@ -21,7 +21,7 @@ async def current_user(
         if settings.dev_mode and dev_id and not init_data:
             payload = {
                 "id": int(dev_id),
-                "first_name": f"Dev {dev_id}",
+                "first_name": request.headers.get("x-dev-name") or f"Dev {dev_id}",
                 "username": f"dev{dev_id}",
             }
         else:

@@ -363,6 +363,27 @@ async def test_chat_rejects_links_and_flood(client):
     assert second.status_code == 400
 
 
+async def test_nick_ticket_after_seven_days(client):
+    nick_headers = {**headers("2200"), "X-Dev-Name": "Test NumbersLab_off"}
+    await get_me(client, "2200")
+    await client.get("/api/me", headers=nick_headers)
+
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 2200))
+        user.nick_since = date.today() - timedelta(days=8)
+        await session.commit()
+
+    first = await client.post("/api/nick/claim", headers=nick_headers, json={"days": 7})
+    assert first.status_code == 200, first.text
+    assert first.json()["ticket"] == "mythic"
+
+    again = await client.post("/api/nick/claim", headers=nick_headers, json={"days": 7})
+    assert again.status_code == 400
+
+    early = await client.post("/api/nick/claim", headers=nick_headers, json={"days": 14})
+    assert early.status_code == 400
+
+
 async def test_daily_once_per_day(client):
     first = await client.post("/api/daily", headers=headers("1300"))
     assert first.status_code == 200

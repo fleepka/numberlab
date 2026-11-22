@@ -36,6 +36,14 @@ export type UserT = {
   streak: number;
 };
 
+export type NickT = {
+  holding: boolean;
+  days: number;
+  claimed7: boolean;
+  claimed14: boolean;
+  next: number | null;
+};
+
 export type ChatMessage = {
   id: number;
   user_id: number;

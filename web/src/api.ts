@@ -7,6 +7,7 @@ import type {
   HuntT,
   JoinResult,
   MeResponse,
+  NickT,
   Offer,
   PassData,
   PassReward,
@@ -131,6 +132,12 @@ export const api = {
   chat: (after = 0) => request<{ items: ChatMessage[] }>(`/api/chat?after=${after}`),
   sendMessage: (text: string) =>
     request<{ id: number }>("/api/chat", { method: "POST", body: JSON.stringify({ text }) }),
+  nick: () => request<NickT>("/api/nick"),
+  claimNick: (days: 7 | 14) =>
+    request<{ days: number; ticket: string }>("/api/nick/claim", {
+      method: "POST",
+      body: JSON.stringify({ days }),
+    }),
   claimPass: (level: number, track: "free" | "premium") =>
     request<{ level: number; track: string; rewards: PassReward }>("/api/pass/claim", {
       method: "POST",

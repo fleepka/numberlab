@@ -27,6 +27,8 @@ from app.garage import claim_income, income_state, sell_many
 from app.hunts import claim as claim_hunt
 from app.hunts import view as hunt_state
 from app.models import Plate, Purchase, User
+from app.nick import claim as claim_nick
+from app.nick import view as nick_state
 from app.passes import PREMIUM_STARS
 from app.passes import claim as claim_pass
 from app.passes import unlock as unlock_pass
@@ -260,6 +262,30 @@ async def rating_view(
         "items": await leaderboard(session, period=period),
         "me": await position(session, user.id, period),
     }
+
+
+@router.get("/nick")
+async def nick_view(user: User = Depends(current_user)) -> dict:
+    return nick_state(user)
+
+
+@router.post("/nick/claim")
+async def nick_claim(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        threshold = int(payload.get("days", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="некорректный срок") from None
+    try:
+        result = await claim_nick(session, user.id, threshold)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
 
 
 @router.get("/chat")

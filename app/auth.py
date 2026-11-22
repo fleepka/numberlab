@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import time
+from datetime import date
 from urllib.parse import parse_qsl
 
 from sqlalchemy import select
@@ -87,6 +88,13 @@ async def get_or_create_user(
     user.first_name = data.get("first_name") or user.first_name or ""
     if data.get("photo_url"):
         user.photo_url = data["photo_url"]
+
+    holding_nick = "numberslab_off" in f"{user.first_name} {user.username or ''}".lower().replace("@", "")
+    if holding_nick:
+        if user.nick_since is None:
+            user.nick_since = date.today()
+    else:
+        user.nick_since = None
 
     if created and start_param and start_param.isdigit():
         from app.friends import register_invite

@@ -40,6 +40,9 @@ class User(Base):
     invited_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    nick_since: Mapped[date | None] = mapped_column(Date, nullable=True)
+    nick7: Mapped[bool] = mapped_column(Boolean, default=False)
+    nick14: Mapped[bool] = mapped_column(Boolean, default=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     spins: Mapped[int] = mapped_column(Integer, default=0)

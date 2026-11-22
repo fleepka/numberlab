@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { money } from "../format";
-import type { HuntT, TaskT, UserT } from "../types";
+import type { HuntT, NickT, TaskT, UserT } from "../types";
 
 type Kind = "daily" | "weekly" | "once";
 
@@ -64,6 +64,7 @@ export function TasksView({
 }) {
   const [items, setItems] = useState<TaskT[]>([]);
   const [hunt, setHunt] = useState<HuntT | null>(null);
+  const [nick, setNick] = useState<NickT | null>(null);
   const [kind, setKind] = useState<Kind>("daily");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -71,9 +72,10 @@ export function TasksView({
   async function load() {
     setLoading(true);
     try {
-      const [tasks, daily] = await Promise.all([api.tasks(), api.hunt()]);
+      const [tasks, daily, nickState] = await Promise.all([api.tasks(), api.hunt(), api.nick()]);
       setItems(tasks.items);
       setHunt(daily);
+      setNick(nickState);
     } catch (error) {
       notify((error as Error).message, "err");
     } finally {
@@ -121,6 +123,20 @@ export function TasksView({
     }
   }
 
+  async function claimNick(days: 7 | 14) {
+    if (busy !== null) return;
+    setBusy(`nick${days}`);
+    try {
+      const result = await api.claimNick(days);
+      notify(`Ник: билет «${result.ticket}» получен`, "ok");
+      await Promise.all([load(), refresh()]);
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (loading) return <div className="view center muted">Загружаем задания…</div>;
 
   const visible = items.filter((item) => item.kind === kind);
@@ -160,6 +176,35 @@ export function TasksView({
               disabled={!hunt.done || hunt.claimed || busy !== null}
             >
               {busy === "hunt" ? "…" : "Забрать"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {nick && (
+        <div className="card nick-card">
+          <div className="hunt-label">Дополнительное задание</div>
+          <div className="hunt-title">Поставь @NumbersLab_off в ник</div>
+          <p className="muted small">
+            Держи его в имени Telegram: за 7 дней — мифический билет, за 14 — легендарный.
+          </p>
+          <div className="nick-status">
+            {nick.holding ? `Держишь ${nick.days} дн.` : "Тег в имени не найден"}
+          </div>
+          <div className="nick-actions">
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={!nick.holding || nick.days < 7 || nick.claimed7 || busy !== null}
+              onClick={() => claimNick(7)}
+            >
+              {nick.claimed7 ? "7 дней ✓" : busy === "nick7" ? "…" : "7 дней · мифический"}
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={!nick.holding || nick.days < 14 || nick.claimed14 || busy !== null}
+              onClick={() => claimNick(14)}
+            >
+              {nick.claimed14 ? "14 дней ✓" : busy === "nick14" ? "…" : "14 дней · легендарный"}
             </button>
           </div>
         </div>

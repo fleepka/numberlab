@@ -39,6 +39,9 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("invited_by", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
         ("garage_income_at", "TIMESTAMP WITH TIME ZONE"),
         ("pass_premium", "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("nick_since", "DATE"),
+        ("nick7", "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("nick14", "BOOLEAN NOT NULL DEFAULT FALSE"),
     ],
     "tasks": [
         ("reward_ticket", "VARCHAR(16) NOT NULL DEFAULT ''"),
