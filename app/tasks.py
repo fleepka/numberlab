@@ -9,6 +9,7 @@ from app.economy import GameError, apply_delta, lock_user, now
 from app.energy import add as add_energy
 from app.models import Task, TaskProgress, User
 from app.progress import award_xp
+from app.tickets import grant as grant_ticket
 
 DEFAULT_TASKS: list[dict] = [
     {
@@ -69,6 +70,7 @@ DEFAULT_TASKS: list[dict] = [
         "reward_coins": 150,
         "reward_energy": 0,
         "reward_gems": 1,
+        "reward_ticket": "rare",
         "sort": 50,
     },
     {
@@ -105,6 +107,7 @@ DEFAULT_TASKS: list[dict] = [
         "reward_coins": 600,
         "reward_energy": 0,
         "reward_gems": 2,
+        "reward_ticket": "legendary",
         "sort": 130,
     },
     {
@@ -222,6 +225,8 @@ async def claim(session: AsyncSession, user_id: int, code: str) -> dict:
     if task.reward_gems:
         await apply_delta(session, user, task.reward_gems, "task", currency="gems", ref=task.code)
     add_energy(user, task.reward_energy)
+    if task.reward_ticket:
+        await grant_ticket(session, user.id, task.reward_ticket)
     award_xp(user, 20)
 
     return {
@@ -233,6 +238,7 @@ async def claim(session: AsyncSession, user_id: int, code: str) -> dict:
             "coins": task.reward_coins,
             "energy": task.reward_energy,
             "gems": task.reward_gems,
+            "ticket": task.reward_ticket or None,
         },
     }
 

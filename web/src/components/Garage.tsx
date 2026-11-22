@@ -2,8 +2,16 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { money } from "../format";
 import { rarityColor, rarityLabel } from "../rarity";
-import type { PlateT } from "../types";
+import type { GarageData, PlateT } from "../types";
 import { Plate } from "./Plate";
+
+const CRAFT_TARGET: Record<string, string> = {
+  common: "Редкий",
+  rare: "Эпический",
+  epic: "Легендарный",
+  legendary: "Мифический",
+  mythic: "Мифический",
+};
 
 export function GarageView({
   refresh,
@@ -12,19 +20,15 @@ export function GarageView({
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
 }) {
-  const [plates, setPlates] = useState<PlateT[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<number | null>(null);
+  const [data, setData] = useState<GarageData | null>(null);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [busy, setBusy] = useState(false);
 
   async function load() {
-    setLoading(true);
     try {
-      const data = await api.garage();
-      setPlates(data.plates);
+      setData(await api.garage());
     } catch (error) {
       notify((error as Error).message, "err");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -33,37 +37,86 @@ export function GarageView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function sell(plate: PlateT) {
-    if (busy !== null) return;
-    setBusy(plate.id);
+  function toggle(plate: PlateT) {
+    if (plate.is_paid) return;
+    setSelected((list) =>
+      list.includes(plate.id) ? list.filter((id) => id !== plate.id) : [...list, plate.id],
+    );
+  }
+
+  async function sellSelected() {
+    if (!selected.length || busy) return;
+    setBusy(true);
     try {
-      const response = await api.sell(plate.id);
-      setPlates((list) => list.filter((item) => item.id !== plate.id));
-      notify(`Номер ${plate.code} продан за ${money(response.amount)}`, "ok");
-      await refresh();
+      const result = await api.sellMany(selected);
+      notify(`Продано ${result.sold} номеров за ${money(result.amount)}`, "ok");
+      setSelected([]);
+      await Promise.all([load(), refresh()]);
     } catch (error) {
       notify((error as Error).message, "err");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  if (loading) return <div className="view center muted">Загружаем гараж…</div>;
+  async function claimIncome() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await api.collectIncome();
+      notify(`Доход гаража: ${money(result.amount)}`, "ok");
+      await Promise.all([load(), refresh()]);
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  if (plates.length === 0) {
+  async function craftSelected() {
+    if (!selected.length || busy) return;
+    setBusy(true);
+    try {
+      const result = await api.craft(selected);
+      notify(
+        `Крафт: ${result.target_label} ${result.plate.code} за ${money(result.value)}`,
+        "ok",
+      );
+      setSelected([]);
+      await Promise.all([load(), refresh()]);
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!data) return <div className="view center muted">Загружаем гараж…</div>;
+
+  const { plates, income } = data;
+  const selectedSum = plates
+    .filter((plate) => selected.includes(plate.id))
+    .reduce((sum, plate) => sum + plate.price, 0);
+
+  if (!plates.length) {
     return (
       <section className="view">
         <div className="empty panel">
           <div className="empty-plate">А000АА77</div>
           <h3>Гараж пуст</h3>
-          <p>Первый номер появится после крутки. Энергия на первую уже есть.</p>
+          <p className="muted small">Первый номер появится после прокрутки — энергия на первую уже есть.</p>
         </div>
       </section>
     );
   }
 
-  const total = plates.reduce((sum, plate) => sum + plate.price, 0);
-  const best = plates.reduce((top, plate) => (plate.price > top.price ? plate : top), plates[0]);
+  const best = plates[0];
+  const selectedPlates = plates.filter((plate) => selected.includes(plate.id));
+  const sameRarity =
+    selectedPlates.length > 0 && new Set(selectedPlates.map((plate) => plate.rarity)).size === 1;
+  const craftable =
+    selectedPlates.length >= 3 && selectedPlates.length <= 7 && sameRarity && !selectedPlates.some((plate) => plate.is_paid);
+  const craftTarget = craftable ? CRAFT_TARGET[selectedPlates[0].rarity] : null;
 
   return (
     <section className="view">
@@ -71,52 +124,101 @@ export function GarageView({
         <div className="garage-summary-top">
           <div>
             <div className="muted small">Стоимость гаража</div>
-            <div className="garage-total">{money(total)}</div>
+            <div className="garage-total">{money(income.total)}</div>
           </div>
           <span className="badge">{plates.length} номеров</span>
         </div>
 
-        <div className="garage-best">
-          <span className="muted small">Лучший номер</span>
-          <span className="garage-best-code" style={{ color: rarityColor(best.rarity) }}>
-            {best.code}
-          </span>
-          <span className="price">{money(best.price)}</span>
+        <div className="income-row">
+          <div>
+            <div className="muted small">Доход гаража</div>
+            <div className="income-rate">+{money(income.rate)} в час</div>
+          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={claimIncome}
+            disabled={busy || income.available <= 0}
+          >
+            {income.available > 0 ? `Забрать ${money(income.available)}` : "Копится"}
+          </button>
         </div>
       </div>
 
+      <div className="garage-best" onClick={() => toggle(best)}>
+        <Plate code={best.code} size="sm" glow={rarityColor(best.rarity)} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="muted small">Лучший номер</div>
+          <div className="garage-best-code" style={{ color: rarityColor(best.rarity) }}>
+            {rarityLabel(best.rarity)} · {money(best.price)}
+          </div>
+        </div>
+      </div>
+
+      <div className="panel tip">
+        <h3>Крафт номера</h3>
+        <p>
+          Выбери 3–7 номеров одной редкости — получишь один номер следующей редкости. В половине
+          случаев он дешевле суммы, в трети — примерно столько же, иногда дороже.
+        </p>
+      </div>
+
       <div className="section-head">
-        <h2>Гараж</h2>
-        <span className="muted">{plates.length} шт.</span>
+        <h2>Все номера</h2>
+        <button
+          className="ghost-link"
+          onClick={() =>
+            setSelected(selected.length === plates.filter((p) => !p.is_paid).length ? [] : plates.filter((p) => !p.is_paid).map((p) => p.id))
+          }
+        >
+          {selected.length ? "Снять выбор" : "Выбрать все"}
+        </button>
       </div>
 
       <div className="garage-grid">
         {plates.map((plate) => {
-          const color = rarityColor(plate.rarity);
+          const active = selected.includes(plate.id);
           return (
-            <article className="card plate-card" key={plate.id} style={{ borderColor: `${color}33` }}>
-              <Plate code={plate.code} size="sm" />
-              <div className="plate-card-foot">
-                <span className="rarity" style={{ color }}>
-                  {rarityLabel(plate.rarity)}
-                </span>
-                <span className="price">{money(plate.price)}</span>
-              </div>
-              {plate.is_paid ? (
-                <span className="badge">куплен за звёзды</span>
-              ) : (
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => sell(plate)}
-                  disabled={busy === plate.id}
-                >
-                  {busy === plate.id ? "…" : "Продать"}
-                </button>
-              )}
-            </article>
+            <button
+              className={
+                active ? "plate-card plate-card-active" : plate.is_paid ? "plate-card plate-card-paid" : "plate-card"
+              }
+              key={plate.id}
+              onClick={() => toggle(plate)}
+            >
+              <span className={active ? "pick pick-active" : "pick"}>{active ? "✓" : ""}</span>
+              <Plate code={plate.code} size="sm" glow={rarityColor(plate.rarity)} />
+              <span className="plate-price" style={{ color: rarityColor(plate.rarity) }}>
+                {money(plate.price)}
+              </span>
+              <span className="muted small">
+                {plate.is_paid ? "за звёзды" : rarityLabel(plate.rarity)}
+              </span>
+            </button>
           );
         })}
       </div>
+
+      {selected.length > 0 && (
+        <div className="selection-bar">
+          <div>
+            <div className="selection-sum">{money(selectedSum)}</div>
+            <div className="muted small">{selected.length} выбрано</div>
+          </div>
+          <div className="selection-actions">
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={craftSelected}
+              disabled={!craftable || busy}
+              title={craftable ? "" : "3–7 номеров одной редкости"}
+            >
+              {craftTarget ? `В ${craftTarget}` : "Крафт"}
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={sellSelected} disabled={busy}>
+              {busy ? "…" : "Продать"}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

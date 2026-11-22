@@ -1,10 +1,10 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 
 from app.db import SessionLocal
 from app.energy import ENERGY_MAX
-from app.models import Collection, Plate, User
+from app.models import Collection, Plate, Ticket, User
 from app.shop import offers_for
 
 
@@ -137,6 +137,142 @@ async def test_referral_ignored_for_existing_user(client):
 
     friends = (await client.get("/api/friends", headers=headers("1510"))).json()
     assert friends["invites"] == 0
+
+
+async def test_garage_batch_sell(client):
+    first = (await client.post("/api/spin", headers=headers("1600"))).json()["plate"]
+    second = (await client.post("/api/spin", headers=headers("1600"))).json()["plate"]
+
+    response = await client.post(
+        "/api/garage/sell", headers=headers("1600"), json={"ids": [first["id"], second["id"]]}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sold"] == 2
+    assert body["amount"] == first["price"] + second["price"]
+    assert body["coins"] == 1500 + body["amount"]
+
+    garage = (await client.get("/api/garage", headers=headers("1600"))).json()
+    assert garage["plates"] == []
+
+
+async def test_garage_income_grows_with_value(client):
+    plate = (await client.post("/api/spin", headers=headers("1610"))).json()["plate"]
+
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1610))
+        user.garage_income_at = user.created_at - timedelta(hours=2)
+        await session.commit()
+
+    garage = (await client.get("/api/garage", headers=headers("1610"))).json()
+    rate = garage["income"]["rate"]
+    assert rate == int(plate["price"] * 0.01)
+    assert garage["income"]["available"] == rate * 2
+
+    claim = await client.post("/api/garage/income", headers=headers("1610"))
+    assert claim.status_code == 200
+    assert claim.json()["amount"] == rate * 2
+
+    again = await client.post("/api/garage/income", headers=headers("1610"))
+    assert again.status_code == 400
+
+
+async def test_garage_refuses_paid_plates(client):
+    plate = (await client.post("/api/spin", headers=headers("1620"))).json()["plate"]
+    async with SessionLocal() as session:
+        row = await session.scalar(select(Plate).where(Plate.id == plate["id"]))
+        row.is_paid = True
+        await session.commit()
+
+    response = await client.post(
+        "/api/garage/sell", headers=headers("1620"), json={"ids": [plate["id"]]}
+    )
+    assert response.status_code == 400
+
+
+async def test_craft_merges_same_rarity(client):
+    await get_me(client, "1700")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1700))
+        ids = []
+        for index in range(3):
+            plate = Plate(
+                code=f"А12{index}ВС50",
+                digits=f"12{index}",
+                letters="АВС",
+                region="50",
+                score=0,
+                price=1000,
+                rarity="common",
+                stars=1,
+                owner_id=user.id,
+            )
+            session.add(plate)
+            await session.flush()
+            ids.append(plate.id)
+        await session.commit()
+
+    response = await client.post("/api/garage/craft", headers=headers("1700"), json={"ids": ids})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["target"] == "rare"
+    assert body["spent"] == 3
+    assert 2600 <= body["value"] <= 3400
+
+    garage = (await client.get("/api/garage", headers=headers("1700"))).json()
+    assert len(garage["plates"]) == 1
+    assert garage["plates"][0]["rarity"] == "rare"
+
+
+async def test_craft_needs_same_rarity(client):
+    await get_me(client, "1710")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1710))
+        ids = []
+        for index, rarity in enumerate(["common", "common", "rare"]):
+            plate = Plate(
+                code=f"В12{index}ВС50",
+                digits=f"12{index}",
+                letters="АВС",
+                region="50",
+                score=0,
+                price=1000,
+                rarity=rarity,
+                stars=1,
+                owner_id=user.id,
+            )
+            session.add(plate)
+            await session.flush()
+            ids.append(plate.id)
+        await session.commit()
+
+    response = await client.post("/api/garage/craft", headers=headers("1710"), json={"ids": ids})
+    assert response.status_code == 400
+
+
+async def test_ticket_spins_plate_of_rarity(client):
+    await get_me(client, "1800")
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.tg_id == 1800))
+        session.add(Ticket(user_id=user.id, rarity="epic", count=1))
+        await session.commit()
+
+    response = await client.post(
+        "/api/tickets/use", headers=headers("1800"), json={"rarity": "epic"}
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["plate"]["rarity"] == "epic"
+    assert body["left"] == 0
+
+    listing = (await client.get("/api/tickets", headers=headers("1800"))).json()
+    counts = {item["rarity"]: item["count"] for item in listing["items"]}
+    assert counts["epic"] == 0
+
+    again = await client.post(
+        "/api/tickets/use", headers=headers("1800"), json={"rarity": "epic"}
+    )
+    assert again.status_code == 400
 
 
 async def test_daily_once_per_day(client):

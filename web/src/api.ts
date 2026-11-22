@@ -2,12 +2,14 @@ import type {
   CollectionT,
   DuelT,
   FriendsData,
+  GarageData,
   JoinResult,
   MeResponse,
   Offer,
   PlateT,
   RatingData,
   TaskT,
+  TicketT,
   Tx,
 } from "./types";
 
@@ -68,9 +70,26 @@ export const api = {
     }>(tier ? `/api/spin?tier=${tier}` : "/api/spin", { method: "POST" }),
   daily: () =>
     request<{ amount: number; coins: number; streak: number }>("/api/daily", { method: "POST" }),
-  garage: () => request<{ plates: PlateT[] }>("/api/garage"),
+  garage: () => request<GarageData>("/api/garage"),
   sell: (id: number) =>
     request<{ amount: number; coins: number }>(`/api/garage/${id}/sell`, { method: "POST" }),
+  sellMany: (ids: number[]) =>
+    request<{ amount: number; sold: number; coins: number }>("/api/garage/sell", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    }),
+  collectIncome: () =>
+    request<{ amount: number; coins: number; rate: number }>("/api/garage/income", {
+      method: "POST",
+    }),
+  craft: (ids: number[]) =>
+    request<{
+      plate: PlateT;
+      spent: number;
+      value: number;
+      target: string;
+      target_label: string;
+    }>("/api/garage/craft", { method: "POST", body: JSON.stringify({ ids }) }),
   history: () => request<{ items: Tx[] }>("/api/history"),
   feed: () =>
     request<{ items: { code: string; rarity: string; score: number; owner: string }[] }>("/api/feed"),
@@ -96,6 +115,12 @@ export const api = {
   rating: (period: "season" | "week" = "season") =>
     request<RatingData>(`/api/rating?period=${period}`),
   friends: () => request<FriendsData>("/api/friends"),
+  tickets: () => request<{ items: TicketT[] }>("/api/tickets"),
+  useTicket: (rarity: string) =>
+    request<{ plate: PlateT; left: number; coins: number }>("/api/tickets/use", {
+      method: "POST",
+      body: JSON.stringify({ rarity }),
+    }),
   duels: () => request<{ open: DuelT[]; mine: DuelT[] }>("/api/duels"),
   createDuel: (bet: number) =>
     request<{ duel: DuelT; coins: number }>("/api/duels", {

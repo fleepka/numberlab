@@ -665,7 +665,7 @@ button {
 
 .link-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -815,6 +815,157 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.income-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.income-rate {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--mint);
+}
+
+.ghost-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.plate-card {
+  position: relative;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.plate-card-active {
+  border-color: rgba(255, 195, 77, 0.55);
+  background: rgba(255, 195, 77, 0.07);
+}
+
+.plate-card-paid {
+  opacity: 0.72;
+  cursor: default;
+}
+
+.plate-price {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pick {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 900;
+  color: #14100a;
+}
+
+.pick-active {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.selection-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--dock) + 18px);
+  transform: translateX(-50%);
+  z-index: 25;
+  width: min(420px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(24, 24, 30, 0.94);
+  border: 1px solid rgba(255, 195, 77, 0.35);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+}
+
+.selection-sum {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--gold);
+}
+
+.selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ticket-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 12px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.12s;
+}
+
+.ticket-card:active {
+  transform: scale(0.985);
+}
+
+.ticket-card:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.ticket-active {
+  border-color: rgba(255, 195, 77, 0.35);
+}
+
+.ticket-count {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ticket-label {
+  font-size: 12.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ticket-result {
+  align-items: center;
+  gap: 8px;
 }
 
 .plate-card {

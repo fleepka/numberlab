@@ -10,7 +10,7 @@ from __future__ import annotations
 import random
 import re
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 LETTERS = "АВЕКМНОРСТУХ"
 
@@ -32,7 +32,7 @@ MAJOR_REGIONS = {
     "01", "02", "03", "50", "90", "102", "116", "150", "190", "199", "777", "797", "799", "977",
 }
 
-PRESTIGE_LETTERS = {"АМР", "АУЕ", "ЕКХ", "МВД", "ФСБ", "КГБ", "СВР", "ОМП"}
+PRESTIGE_LETTERS = {"АМР", "АУЕ", "ЕКХ", "СВР", "МОС"}
 
 TIERS: tuple[str, ...] = ("common", "rare", "epic", "legendary", "mythic")
 
@@ -347,17 +347,11 @@ def spin_plate(tier: str, rng: random.Random | None = None) -> PlateValue:
     plate = plate_for_tier(tier, rng)
     multiplier = value_multiplier(rng)
     price = max(100, int(round(plate.price * multiplier / 100) * 100))
-    return PlateValue(
-        code=plate.code,
-        digits=plate.digits,
-        letters=plate.letters,
-        region=plate.region,
-        score=plate.score,
-        price=price,
-        rarity=plate.rarity,
-        stars=plate.stars,
-        factors=plate.factors,
-    )
+    return replace(plate, price=price)
+
+
+def priced(value: PlateValue, price: int) -> PlateValue:
+    return replace(value, price=max(100, int(round(price / 100) * 100)))
 
 
 def pretty_plate(rng: random.Random | None = None) -> PlateValue:

@@ -48,6 +48,9 @@ class User(Base):
     streak: Mapped[int] = mapped_column(Integer, default=0)
     last_spin_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_daily_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    garage_income_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -178,6 +181,7 @@ class Task(Base):
     reward_coins: Mapped[int] = mapped_column(Integer, default=0)
     reward_energy: Mapped[int] = mapped_column(Integer, default=0)
     reward_gems: Mapped[int] = mapped_column(Integer, default=0)
+    reward_ticket: Mapped[str] = mapped_column(String(16), default="")
     sort: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -195,3 +199,14 @@ class TaskProgress(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "task_id", "period", name="uq_task_progress"),
     )
+
+
+class Ticket(Base):
+    __tablename__ = "tickets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    rarity: Mapped[str] = mapped_column(String(16))
+    count: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (UniqueConstraint("user_id", "rarity", name="uq_ticket_user_rarity"),)

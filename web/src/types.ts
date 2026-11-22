@@ -36,6 +36,26 @@ export type UserT = {
   streak: number;
 };
 
+export type TicketT = {
+  rarity: string;
+  label: string;
+  count: number;
+};
+
+export type GarageIncome = {
+  rate: number;
+  available: number;
+  total: number;
+  plates: number;
+  cap_hours: number;
+  hours: number;
+};
+
+export type GarageData = {
+  plates: PlateT[];
+  income: GarageIncome;
+};
+
 export type MeResponse = {
   user: UserT;
   garage_count: number;

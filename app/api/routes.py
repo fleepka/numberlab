@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import tickets as ticket_service
 from app.api.deps import current_user
 from app.api.serializers import plate_json, tx_json, user_json
 from app.db import get_session
+from app.craft import craft
 from app.collections import catalog as collections_catalog
 from app.collections import claim as claim_collection
 from app.economy import history
@@ -16,6 +18,7 @@ from app.rating import leaderboard, position
 from app.tasks import catalog as tasks_catalog
 from app.tasks import claim as claim_task
 from app.game import GameError, claim_daily, sell_plate, spin
+from app.garage import claim_income, income_state, sell_many
 from app.models import Plate, User
 from app.plates import STAKES
 
@@ -92,7 +95,63 @@ async def garage(
         .order_by(Plate.price.desc(), Plate.id.desc())
         .limit(300)
     )
-    return {"plates": [plate_json(p) for p in plates]}
+    return {"plates": [plate_json(p) for p in plates], "income": await income_state(session, user)}
+
+
+@router.post("/garage/sell")
+async def sell_batch(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    ids = payload.get("ids") or []
+    if not isinstance(ids, list) or not all(isinstance(item, int) for item in ids):
+        raise HTTPException(status_code=400, detail="ожидается список id")
+    try:
+        result = await sell_many(session, user.id, ids)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
+
+
+@router.post("/garage/income")
+async def collect_income(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        result = await claim_income(session, user.id)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return result
+
+
+@router.post("/garage/craft")
+async def craft_plates(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    ids = payload.get("ids") or []
+    if not isinstance(ids, list) or not all(isinstance(item, int) for item in ids):
+        raise HTTPException(status_code=400, detail="ожидается список id")
+    try:
+        result = await craft(session, user.id, ids)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return {
+        "plate": plate_json(result["plate"]),
+        "spent": result["spent"],
+        "value": result["value"],
+        "target": result["target"],
+        "target_label": result["target_label"],
+    }
 
 
 @router.post("/garage/{plate_id}/sell")
@@ -188,6 +247,34 @@ async def rating_view(
         "period": period,
         "items": await leaderboard(session, period=period),
         "me": await position(session, user.id, period),
+    }
+
+
+@router.get("/tickets")
+async def tickets_view(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return {"items": await ticket_service.list_for(session, user.id)}
+
+
+@router.post("/tickets/use")
+async def use_ticket(
+    payload: dict,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    rarity = str(payload.get("rarity", ""))
+    try:
+        result = await ticket_service.use(session, user.id, rarity)
+        await session.commit()
+    except GameError as error:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    return {
+        "plate": plate_json(result["plate"]),
+        "left": result["left"],
+        "coins": result["coins"],
     }
 
 
