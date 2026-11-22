@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.economy import GameError, lock_user, now
 from app.models import Plate, User
 from app.plates import RARITY_LABELS, plate_for_tier, priced
+from app.plate_store import insert_plate
 from app.progress import award_xp
 
 CRAFT_MIN = 3
@@ -62,29 +63,12 @@ async def craft(session: AsyncSession, user_id: int, plate_ids: list[int]) -> di
     total = sum(plate.price for plate in plates)
     value = max(100, int(round(total * craft_multiplier() / 100) * 100))
 
-    made = None
-    for _ in range(40):
-        candidate = priced(plate_for_tier(target), value)
-        exists = await session.scalar(select(Plate.id).where(Plate.code == candidate.code))
-        if exists:
-            continue
-        made = Plate(
-            code=candidate.code,
-            digits=candidate.digits,
-            letters=candidate.letters,
-            region=candidate.region,
-            score=candidate.score,
-            price=candidate.price,
-            rarity=candidate.rarity,
-            stars=candidate.stars,
-            owner_id=user_id,
-            source="craft",
-        )
-        session.add(made)
-        break
-
-    if made is None:
-        raise GameError("не удалось собрать номер, попробуй ещё раз")
+    made = await insert_plate(
+        session,
+        lambda: priced(plate_for_tier(target), value),
+        owner_id=user_id,
+        source="craft",
+    )
 
     for plate in plates:
         plate.owner_id = None

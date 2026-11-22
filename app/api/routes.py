@@ -40,7 +40,12 @@ from app.passes import view as pass_view
 from app.plates import ENERGY_COST, STAKES
 from app.tg import stars_invoice
 from app.style import buy as buy_frame
-from app.vip import buy as buy_vip
+from app.store import PRODUCTS
+from app.store import catalog as product_catalog
+from app.store import fulfil as fulfil_product
+from app.store import prepare as prepare_product
+from app.shop import ShopError
+from app.vip import is_active as vip_active
 
 router = APIRouter(prefix="/api", tags=["profile"])
 
@@ -362,18 +367,40 @@ async def style_buy(
     return result
 
 
-@router.post("/vip/buy")
-async def vip_buy(
+@router.get("/products")
+async def products_view() -> dict:
+    return {"items": product_catalog()}
+
+
+@router.post("/products/buy")
+async def product_buy(
+    payload: dict,
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    code = str(payload.get("code", ""))
     try:
-        result = await buy_vip(session, user.id)
-        await session.commit()
-    except GameError as error:
-        await session.rollback()
+        purchase = await prepare_product(session, user, code)
+    except ShopError as error:
         raise HTTPException(status_code=400, detail=str(error)) from None
-    return result
+
+    try:
+        url = await stars_invoice(
+            title=PRODUCTS[code]["title"],
+            description="Покупка в NUMBERLAB",
+            payload=purchase.payload,
+            stars=purchase.stars,
+        )
+    except RuntimeError:
+        if not settings.dev_mode:
+            await session.rollback()
+            raise HTTPException(status_code=503, detail="оплата временно недоступна") from None
+        await fulfil_product(session, purchase)
+        await session.commit()
+        return {"dev": True, "invoice_url": None}
+
+    await session.commit()
+    return {"dev": False, "invoice_url": url}
 
 
 @router.get("/chat")

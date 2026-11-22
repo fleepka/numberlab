@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy import GameError, apply_delta, lock_user
@@ -97,6 +98,11 @@ async def claim(session: AsyncSession, user_id: int, level: int, track: str) -> 
         raise GameError("награда уже получена")
 
     session.add(PassClaim(user_id=user.id, level=level, track=track))
+    try:
+        await session.flush()
+    except IntegrityError:
+        raise GameError("награда уже получена") from None
+
     reward = rewards_for(level, track == "premium")
 
     if reward["coins"]:

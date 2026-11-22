@@ -5,13 +5,12 @@ import { rarityColor, rarityLabel } from "../rarity";
 import type { AuctionData, Offer, ShopData } from "../types";
 import { Plate } from "./Plate";
 
-type Tab = "numbers" | "energy" | "tickets" | "vip" | "auction" | "style";
+type Tab = "numbers" | "energy" | "tickets" | "auction" | "style";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "numbers", label: "Номера" },
   { id: "energy", label: "Энергия" },
   { id: "tickets", label: "Билеты" },
-  { id: "vip", label: "VIP" },
   { id: "auction", label: "Аукцион" },
   { id: "style", label: "Стиль" },
 ];
@@ -144,20 +143,6 @@ export function ShopView({
     }
   }
 
-  async function buyVip() {
-    if (busy) return;
-    setBusy("vip");
-    try {
-      await api.buyVip();
-      notify("VIP активен: +2 места и доход гаража ×1,5", "ok");
-      await Promise.all([load(), refresh()]);
-    } catch (error) {
-      notify((error as Error).message, "err");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   if (!data) return <div className="view center muted">Загружаем магазин…</div>;
 
   return (
@@ -225,24 +210,6 @@ export function ShopView({
               </button>
             </article>
           ))}
-        </div>
-      )}
-
-      {tab === "vip" && (
-        <div className="card vip-card">
-          <div className="section-head">
-            <h3>VIP</h3>
-            {data.vip_until && <span className="badge">до {data.vip_until}</span>}
-          </div>
-          <ul className="vip-list">
-            <li>+2 места в гараже сразу</li>
-            <li>Доход гаража ×1,5</li>
-            <li>Продление в любой момент</li>
-          </ul>
-          <button className="btn btn-primary btn-lg" onClick={buyVip} disabled={busy === "vip"}>
-            {busy === "vip" ? "…" : data.vip_until ? "Продлить · 30 дней" : `Оформить · ${money(data.vip_price)}`}
-          </button>
-          <p className="muted small">{money(data.vip_price)} за 30 дней игровыми рублями.</p>
         </div>
       )}
 

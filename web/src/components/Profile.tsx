@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, tg } from "../api";
 import { rarityColor, rarityLabel } from "../rarity";
-import type { PlateT, Tx, UserT } from "../types";
+import type { PlateT, Product, Tx, UserT } from "../types";
 import { Plate } from "./Plate";
 
 const REASONS: Record<string, string> = {
@@ -45,6 +45,40 @@ export function ProfileView({
 }) {
   const [history, setHistory] = useState<Tx[]>([]);
   const [dailyBusy, setDailyBusy] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [buying, setBuying] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .products()
+      .then((data) => setProducts(data.items))
+      .catch(() => undefined);
+  }, []);
+
+  async function buyProduct(code: string) {
+    if (buying) return;
+    setBuying(code);
+    try {
+      const result = await api.buyProduct(code);
+      if (result.invoice_url && tg?.openInvoice) {
+        tg.openInvoice(result.invoice_url, (status) => {
+          if (status === "paid") {
+            notify("Куплено", "ok");
+            void refresh();
+          }
+        });
+      } else if (result.dev) {
+        notify("DEV: товар выдан без оплаты", "ok");
+        await refresh();
+      } else {
+        notify("Не удалось открыть счёт", "err");
+      }
+    } catch (error) {
+      notify((error as Error).message, "err");
+    } finally {
+      setBuying(null);
+    }
+  }
 
   useEffect(() => {
     api
@@ -123,6 +157,49 @@ export function ProfileView({
       <button className="btn btn-primary" onClick={claimDaily} disabled={dailyBusy}>
         {dailyBusy ? "…" : "Забрать ежедневную награду"}
       </button>
+
+      <div className="card vip-card">
+        <div className="section-head">
+          <h3>VIP</h3>
+          {user.vip_until && <span className="badge">до {user.vip_until}</span>}
+        </div>
+        <ul className="vip-list">
+          <li>+2 места в гараже</li>
+          <li>Доход гаража ×1,5</li>
+          <li>30 дней, продлевается в любой момент</li>
+        </ul>
+        <button className="btn btn-primary" onClick={() => buyProduct("vip")} disabled={buying !== null}>
+          {buying === "vip" ? "…" : "Оформить VIP · 99 ★"}
+        </button>
+      </div>
+
+      {products.some((item) => item.kind === "style") && (
+        <>
+          <div className="section-head">
+            <h3>Косметика</h3>
+            <span className="muted small">за звёзды</span>
+          </div>
+          <div className="shop-grid">
+            {products
+              .filter((item) => item.kind === "style")
+              .map((item) => (
+                <article className="card shop-card" key={item.code}>
+                  <span className="frame-preview" style={{ borderColor: item.color ?? "#ffc247" }}>
+                    рамка
+                  </span>
+                  <span className="stars-price">{item.stars} ★</span>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => buyProduct(item.code)}
+                    disabled={buying !== null}
+                  >
+                    {buying === item.code ? "…" : user.frame === item.code.slice(6) ? "надето" : "Купить"}
+                  </button>
+                </article>
+              ))}
+          </div>
+        </>
+      )}
 
       <div className="menu-list">
         {MENU.map((item) => (

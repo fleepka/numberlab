@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy import GameError, lock_user
 from app.models import Plate, Ticket, User
+from app.plate_store import insert_plate
 from app.plates import RARITY_LABELS, TIERS, plate_for_tier, tier_index
 from app.progress import award_xp
 
@@ -33,26 +34,9 @@ async def list_for(session: AsyncSession, user_id: int) -> list[dict]:
 
 
 async def _new_plate(session: AsyncSession, user_id: int, rarity: str) -> Plate:
-    for _ in range(40):
-        value = plate_for_tier(rarity)
-        if await session.scalar(select(Plate.id).where(Plate.code == value.code)):
-            continue
-        plate = Plate(
-            code=value.code,
-            digits=value.digits,
-            letters=value.letters,
-            region=value.region,
-            score=value.score,
-            price=value.price,
-            rarity=value.rarity,
-            stars=value.stars,
-            owner_id=user_id,
-            source="ticket",
-        )
-        session.add(plate)
-        await session.flush()
-        return plate
-    raise GameError("не удалось подобрать номер, попробуй ещё раз")
+    return await insert_plate(
+        session, lambda: plate_for_tier(rarity), owner_id=user_id, source="ticket"
+    )
 
 
 async def use(session: AsyncSession, user_id: int, rarity: str) -> dict:

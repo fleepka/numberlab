@@ -477,30 +477,37 @@ async def test_full_garage_blocks_spin(client):
     assert second.status_code == 400
 
 
-async def test_vip_gives_slots_and_income_bonus(client):
+async def test_vip_product_gives_slots_and_income_bonus(client):
     await get_me(client, "2600")
     await client.post("/api/spin?tier=common", headers=headers("2600"))
 
     before = (await client.get("/api/garage", headers=headers("2600"))).json()["income"]["rate"]
 
-    async with SessionLocal() as session:
-        user = await session.scalar(select(User).where(User.tg_id == 2600))
-        user.coins = 200_000
-        await session.commit()
-
-    bought = await client.post("/api/vip/buy", headers=headers("2600"))
+    bought = await client.post("/api/products/buy", headers=headers("2600"), json={"code": "vip"})
     assert bought.status_code == 200, bought.text
-    assert bought.json()["slots"] == 24
-    assert bought.json()["active"] is True
+    assert bought.json()["dev"] is True
+
+    me = await get_me(client, "2600")
+    assert me["user"]["vip_until"] is not None
+    assert me["user"]["garage_slots"] == 24
 
     after = (await client.get("/api/garage", headers=headers("2600"))).json()["income"]["rate"]
     assert after == int(before * 1.5)
 
 
-async def test_vip_requires_money(client):
+async def test_cosmetic_product_sets_frame(client):
     await get_me(client, "2610")
-    response = await client.post("/api/vip/buy", headers=headers("2610"))
-    assert response.status_code == 400
+
+    catalog = (await client.get("/api/products", headers=headers("2610"))).json()["items"]
+    assert any(item["code"] == "style:neon" for item in catalog)
+
+    bought = await client.post(
+        "/api/products/buy", headers=headers("2610"), json={"code": "style:neon"}
+    )
+    assert bought.status_code == 200, bought.text
+
+    me = await get_me(client, "2610")
+    assert me["user"]["frame"] == "neon"
 
 
 async def test_auction_bid_and_refund(client):

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy import GameError, apply_delta, lock_user, now
@@ -45,30 +46,37 @@ async def _create_lot(session: AsyncSession) -> Auction:
 async def _close(session: AsyncSession, auction: Auction) -> None:
     if auction.closed:
         return
-    auction.closed = True
     if not auction.top_user_id:
+        auction.closed = True
         return
 
     from app.plates import parse_code
 
     value = parse_code(auction.plate_code)
-    exists = await session.scalar(select(Plate.id).where(Plate.code == value.code))
-    if exists:
-        return
-    session.add(
-        Plate(
-            code=value.code,
-            digits=value.digits,
-            letters=value.letters,
-            region=value.region,
-            score=value.score,
-            price=value.price,
-            rarity=value.rarity,
-            stars=value.stars,
-            owner_id=auction.top_user_id,
-            source="auction",
-        )
+    plate = Plate(
+        code=value.code,
+        digits=value.digits,
+        letters=value.letters,
+        region=value.region,
+        score=value.score,
+        price=value.price,
+        rarity=value.rarity,
+        stars=value.stars,
+        owner_id=auction.top_user_id,
+        source="auction",
     )
+    try:
+        async with session.begin_nested():
+            session.add(plate)
+            await session.flush()
+    except IntegrityError:
+        # Номер уже занят: не отдаём лот, возвращаем ставку лидеру.
+        leader = await lock_user(session, auction.top_user_id)
+        await apply_delta(session, leader, auction.top_bid, "auction_refund", ref=str(auction.id))
+        auction.closed = True
+        return
+
+    auction.closed = True
 
 
 async def current(session: AsyncSession) -> Auction:

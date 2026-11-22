@@ -5,6 +5,7 @@ import secrets
 from datetime import date
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy import now
@@ -110,6 +111,11 @@ async def fulfil_purchase(session: AsyncSession, payload: str) -> Plate | None:
     if purchase is None or purchase.status == "paid":
         return None
 
+    from app.store import fulfil as fulfil_product
+
+    if await fulfil_product(session, purchase):
+        return None
+
     if purchase.code == "pass":
         user = await session.scalar(select(User).where(User.id == purchase.user_id))
         if user is not None:
@@ -136,8 +142,13 @@ async def fulfil_purchase(session: AsyncSession, payload: str) -> Plate | None:
         is_paid=True,
         source="shop",
     )
-    session.add(plate)
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            session.add(plate)
+            await session.flush()
+    except IntegrityError:
+        purchase.status = "failed"
+        return None
 
     purchase.status = "paid"
     purchase.paid_at = now()

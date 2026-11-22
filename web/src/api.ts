@@ -13,6 +13,7 @@ import type {
   PassData,
   PassReward,
   PlateT,
+  Product,
   RatingData,
   ShopData,
   TaskT,
@@ -176,9 +177,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ rarity }),
     }),
-  buyVip: () =>
-    request<{ vip_until: string; coins: number; slots: number; active: boolean }>("/api/vip/buy", {
+  products: () => request<{ items: Product[] }>("/api/products"),
+  buyProduct: (code: string) =>
+    request<{ dev: boolean; invoice_url: string | null }>("/api/products/buy", {
       method: "POST",
+      body: JSON.stringify({ code }),
     }),
   auction: () => request<AuctionData>("/api/auction"),
   bidAuction: (amount: number) =>

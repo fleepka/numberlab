@@ -159,6 +159,14 @@ export type EnergyPack = {
   price: number;
 };
 
+export type Product = {
+  code: string;
+  title: string;
+  stars: number;
+  kind: string;
+  color: string | null;
+};
+
 export type AuctionData = {
   code: string;
   rarity: string;

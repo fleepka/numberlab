@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -22,6 +23,7 @@ from app.plates import (
     spin_plate,
     tier_index,
 )
+from app.plate_store import insert_plate
 from app.progress import award_xp
 from app.tasks import bump
 
@@ -52,15 +54,7 @@ async def create_unique_plate(
     source: str,
     factory=pretty_plate,
 ) -> Plate:
-    for _ in range(8):
-        value = factory()
-        if await session.scalar(select(Plate.id).where(Plate.code == value.code)):
-            continue
-        plate = _plate_from(value, owner_id, source)
-        session.add(plate)
-        await session.flush()
-        return plate
-    raise GameError("не удалось подобрать свободный номер")
+    return await insert_plate(session, factory, owner_id=owner_id, source=source)
 
 
 async def spin(
@@ -134,8 +128,14 @@ async def claim_daily(session: AsyncSession, user_id: int) -> int:
     user.streak = user.streak + 1 if previous else 1
     amount = settings.daily_base * min(user.streak, 7)
 
+    try:
+        async with session.begin_nested():
+            session.add(DailyClaim(user_id=user.id, day=today, amount=amount))
+            await session.flush()
+    except IntegrityError:
+        raise GameError("награда за сегодня уже получена") from None
+
     await apply_delta(session, user, amount, "daily", ref=str(today))
-    session.add(DailyClaim(user_id=user.id, day=today, amount=amount))
     award_xp(user, 10)
     await bump(session, user, "daily")
     return amount
