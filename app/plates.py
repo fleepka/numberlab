@@ -87,6 +87,30 @@ def hype_region(day: date | None = None) -> str:
     week = (day or date.today()).isocalendar()[1]
     return HYPE_ROTATION[week % len(HYPE_ROTATION)]
 
+
+# Официальная казахстанская сетка «повышенного спроса», сжатая до множителей к базе.
+KZ_PREMIUM = {
+    "777": 3.0,
+    "001": 3.0,
+    "002": 3.0,
+    "003": 3.0,
+    "004": 3.0,
+    "005": 3.0,
+    "006": 3.0,
+    "007": 3.0,
+    "008": 3.0,
+    "009": 3.0,
+    "111": 2.2,
+    "999": 2.2,
+    "707": 1.5,
+}
+
+
+def premium_multiplier(digits: str, country: str) -> float:
+    if country in ("KZ", "UZ"):
+        return KZ_PREMIUM.get(digits, 1.0)
+    return 1.0
+
 COUNTRY_CODES = tuple(COUNTRIES)
 
 PRESTIGE_LETTERS = {"АМР", "АУЕ", "ЕКХ", "СВР", "МОС", "КАМ"}
@@ -293,6 +317,7 @@ def price_of(
         mult *= AE_DIGIT_MULT.get(len(digits), 1.0)
     if country == "RU" and region and region == hype_region():
         mult *= HYPE_MULT
+    mult *= premium_multiplier(digits, country)
     return max(100, int(round(base * mult / 100) * 100))
 
 

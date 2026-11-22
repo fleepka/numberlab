@@ -62,6 +62,13 @@ def test_price_formula_matches_tier():
     assert plate.price == round(raw / 100) * 100
 
 
+def test_kz_premium_grid_boosts_777():
+    lucky = build("ABC", "777", "01", "KZ")
+    other = build("ABC", "888", "01", "KZ")
+    assert lucky.rarity == other.rarity == "mythic"
+    assert lucky.price > other.price
+
+
 def test_hype_region_costs_more():
     hot = hype_region()
     other = next(code for code in ("75", "76", "74") if code != hot)

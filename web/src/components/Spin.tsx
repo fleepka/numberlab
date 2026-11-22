@@ -148,14 +148,14 @@ export function SpinView({
         </span>
       </div>
 
-      <div className="chips">
+      <div className="country-row">
         {countries.map((item) => (
           <button
             key={item.code}
-            className={country === item.code ? "chip chip-active" : "chip"}
+            className={country === item.code ? "chip chip-sm chip-active" : "chip chip-sm"}
             onClick={() => setCountry(item.code)}
           >
-            {item.flag} · {item.title}
+            {item.flag}
           </button>
         ))}
       </div>
@@ -215,14 +215,17 @@ export function SpinView({
           <span className="muted small">Что крутим</span>
           <span className="muted small">{rarityLabel(stake)}</span>
         </div>
-        <div className="chips">
+        <div className="chips chips-grid">
           {Object.entries(stakes).map(([tier, tierPrice]) => (
             <button
               key={tier}
               className={stake === tier ? "chip chip-active" : "chip"}
               onClick={() => setStake(tier)}
             >
-              {rarityLabel(tier)} · ⚡{energyCosts[tier] ?? 1} / {money(tierPrice)}
+              <span className="chip-title">{rarityLabel(tier)}</span>
+              <span className="chip-price">
+                ⚡{energyCosts[tier] ?? 1} · {money(tierPrice)}
+              </span>
             </button>
           ))}
         </div>
